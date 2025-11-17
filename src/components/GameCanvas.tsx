@@ -10,12 +10,19 @@ interface Cell {
   vy: number;
   isPlayer: boolean;
   name?: string;
+  id: string;
 }
 
 interface Food {
   x: number;
   y: number;
   color: string;
+}
+
+interface Cactus {
+  x: number;
+  y: number;
+  radius: number;
 }
 
 const COLORS = [
@@ -26,6 +33,8 @@ const COLORS = [
 const WORLD_SIZE = 3000;
 const FOOD_COUNT = 500;
 const BOT_COUNT = 15;
+const CACTUS_COUNT = 30;
+const MAX_PLAYER_CELLS = 16;
 
 export const GameCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -35,9 +44,12 @@ export const GameCanvas = () => {
   const playerCells = useRef<Cell[]>([]);
   const botCells = useRef<Cell[]>([]);
   const foods = useRef<Food[]>([]);
+  const cacti = useRef<Cactus[]>([]);
   const cameraPos = useRef({ x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 });
+  const cellIdCounter = useRef(0);
 
   const initGame = () => {
+    cellIdCounter.current = 0;
     // Initialize player
     playerCells.current = [{
       x: WORLD_SIZE / 2,
@@ -47,7 +59,8 @@ export const GameCanvas = () => {
       vx: 0,
       vy: 0,
       isPlayer: true,
-      name: 'You'
+      name: 'You',
+      id: `player-${cellIdCounter.current++}`
     }];
 
     // Initialize bots
@@ -59,7 +72,8 @@ export const GameCanvas = () => {
       vx: 0,
       vy: 0,
       isPlayer: false,
-      name: `Bot ${i + 1}`
+      name: `Bot ${i + 1}`,
+      id: `bot-${cellIdCounter.current++}`
     }));
 
     // Initialize food
@@ -69,9 +83,16 @@ export const GameCanvas = () => {
       color: COLORS[Math.floor(Math.random() * COLORS.length)]
     }));
 
+    // Initialize cacti
+    cacti.current = Array.from({ length: CACTUS_COUNT }, () => ({
+      x: Math.random() * WORLD_SIZE,
+      y: Math.random() * WORLD_SIZE,
+      radius: 20 + Math.random() * 30
+    }));
+
     setScore(0);
     setGameStarted(true);
-    toast.success('Game started! Move your mouse to control your cell. Press SPACE to split.');
+    toast.success('Game started! Move to control. W to eject mass. SPACE to split.');
   };
 
   useEffect(() => {
@@ -95,33 +116,76 @@ export const GameCanvas = () => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === 'Space' && playerCells.current.length > 0) {
         e.preventDefault();
-        splitCell();
+        splitCells();
+      }
+      if (e.code === 'KeyW' && playerCells.current.length > 0) {
+        e.preventDefault();
+        ejectMass();
       }
     };
 
     canvas.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('keydown', handleKeyPress);
 
-    const splitCell = () => {
+    const ejectMass = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      playerCells.current.forEach(cell => {
+        if (cell.radius > 15) {
+          const angle = Math.atan2(
+            mousePos.current.y - canvas.height / 2,
+            mousePos.current.x - canvas.width / 2
+          );
+          
+          // Reduce player cell size
+          const massLoss = 2;
+          cell.radius = Math.sqrt(Math.max(0, cell.radius ** 2 - massLoss ** 2));
+          
+          // Create ejected mass as food
+          const ejectSpeed = 20;
+          const ejectDistance = cell.radius + 10;
+          foods.current.push({
+            x: cell.x + Math.cos(angle) * ejectDistance,
+            y: cell.y + Math.sin(angle) * ejectDistance,
+            color: cell.color
+          });
+        }
+      });
+    };
+
+    const splitCells = () => {
+      if (playerCells.current.length >= MAX_PLAYER_CELLS) {
+        toast.error('Maximum split reached!');
+        return;
+      }
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
       const newCells: Cell[] = [];
       playerCells.current.forEach(cell => {
-        if (cell.radius > 20) {
+        if (cell.radius > 20 && newCells.length + playerCells.current.length < MAX_PLAYER_CELLS) {
           const angle = Math.atan2(
             mousePos.current.y - canvas.height / 2,
             mousePos.current.x - canvas.width / 2
           );
           const newRadius = cell.radius / Math.sqrt(2);
+          const splitDistance = newRadius * 2;
+          
           newCells.push({
             ...cell,
             radius: newRadius,
+            id: `player-${cellIdCounter.current++}`
           });
           newCells.push({
             ...cell,
             radius: newRadius,
-            x: cell.x + Math.cos(angle) * 50,
-            y: cell.y + Math.sin(angle) * 50,
-            vx: Math.cos(angle) * 15,
-            vy: Math.sin(angle) * 15,
+            x: cell.x + Math.cos(angle) * splitDistance,
+            y: cell.y + Math.sin(angle) * splitDistance,
+            vx: Math.cos(angle) * 20,
+            vy: Math.sin(angle) * 20,
+            id: `player-${cellIdCounter.current++}`
           });
         } else {
           newCells.push(cell);
@@ -170,6 +234,24 @@ export const GameCanvas = () => {
     const checkCollisions = () => {
       const allCells = [...playerCells.current, ...botCells.current];
       
+      // Check cactus collisions
+      playerCells.current = playerCells.current.filter(cell => {
+        for (const cactus of cacti.current) {
+          const dist = Math.hypot(cell.x - cactus.x, cell.y - cactus.y);
+          if (dist < cell.radius + cactus.radius) {
+            toast.error('Hit a cactus!');
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (playerCells.current.length === 0 && gameStarted) {
+        toast.error('Game Over! Your score: ' + Math.floor(score));
+        setGameStarted(false);
+        return;
+      }
+      
       // Check cell eating
       for (let i = 0; i < allCells.length; i++) {
         for (let j = i + 1; j < allCells.length; j++) {
@@ -178,27 +260,27 @@ export const GameCanvas = () => {
           const dist = Math.hypot(cell1.x - cell2.x, cell1.y - cell2.y);
           
           if (dist < Math.max(cell1.radius, cell2.radius)) {
-            if (cell1.radius > cell2.radius * 1.1) {
+            if (cell1.radius > cell2.radius * 1.15) {
               cell1.radius = Math.sqrt(cell1.radius ** 2 + cell2.radius ** 2);
               if (cell2.isPlayer) {
-                playerCells.current = playerCells.current.filter(c => c !== cell2);
+                playerCells.current = playerCells.current.filter(c => c.id !== cell2.id);
                 if (playerCells.current.length === 0) {
                   toast.error('Game Over! Your score: ' + Math.floor(score));
                   setGameStarted(false);
                 }
               } else {
-                botCells.current = botCells.current.filter(c => c !== cell2);
+                botCells.current = botCells.current.filter(c => c.id !== cell2.id);
               }
-            } else if (cell2.radius > cell1.radius * 1.1) {
+            } else if (cell2.radius > cell1.radius * 1.15) {
               cell2.radius = Math.sqrt(cell1.radius ** 2 + cell2.radius ** 2);
               if (cell1.isPlayer) {
-                playerCells.current = playerCells.current.filter(c => c !== cell1);
+                playerCells.current = playerCells.current.filter(c => c.id !== cell1.id);
                 if (playerCells.current.length === 0) {
                   toast.error('Game Over! Your score: ' + Math.floor(score));
                   setGameStarted(false);
                 }
               } else {
-                botCells.current = botCells.current.filter(c => c !== cell1);
+                botCells.current = botCells.current.filter(c => c.id !== cell1.id);
               }
             }
           }
@@ -234,16 +316,26 @@ export const GameCanvas = () => {
     const gameLoop = () => {
       if (!gameStarted) return;
 
-      // Update player cells
+      // Update player cells with slower, smoother movement
       playerCells.current.forEach(cell => {
         const dx = mousePos.current.x - canvas.width / 2;
         const dy = mousePos.current.y - canvas.height / 2;
         const dist = Math.hypot(dx, dy);
         
         if (dist > 10) {
-          const speed = Math.max(2, 8 - cell.radius / 10);
-          cell.vx = (dx / dist) * speed * 0.1;
-          cell.vy = (dy / dist) * speed * 0.1;
+          // Much slower speed calculation
+          const baseSpeed = 2.5;
+          const speed = Math.max(0.8, baseSpeed - cell.radius / 30);
+          const targetVx = (dx / dist) * speed;
+          const targetVy = (dy / dist) * speed;
+          
+          // Smooth interpolation for velocity
+          cell.vx += (targetVx - cell.vx) * 0.15;
+          cell.vy += (targetVy - cell.vy) * 0.15;
+        } else {
+          // Gradually slow down when near target
+          cell.vx *= 0.9;
+          cell.vy *= 0.9;
         }
 
         cell.x += cell.vx;
@@ -253,9 +345,9 @@ export const GameCanvas = () => {
         cell.x = Math.max(cell.radius, Math.min(WORLD_SIZE - cell.radius, cell.x));
         cell.y = Math.max(cell.radius, Math.min(WORLD_SIZE - cell.radius, cell.y));
 
-        // Friction
-        cell.vx *= 0.95;
-        cell.vy *= 0.95;
+        // Increased friction for smoother feel
+        cell.vx *= 0.98;
+        cell.vy *= 0.98;
       });
 
       updateBots();
@@ -299,10 +391,46 @@ export const GameCanvas = () => {
       foods.current.forEach(food => {
         const sx = toScreenX(food.x);
         const sy = toScreenY(food.y);
-        ctx.fillStyle = food.color;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-        ctx.fill();
+        if (sx > -50 && sx < canvas.width + 50 && sy > -50 && sy < canvas.height + 50) {
+          ctx.fillStyle = food.color;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // Draw cacti
+      cacti.current.forEach(cactus => {
+        const sx = toScreenX(cactus.x);
+        const sy = toScreenY(cactus.y);
+        if (sx > -100 && sx < canvas.width + 100 && sy > -100 && sy < canvas.height + 100) {
+          // Cactus body
+          ctx.fillStyle = '#2d5016';
+          ctx.beginPath();
+          ctx.arc(sx, sy, cactus.radius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Cactus spikes
+          ctx.strokeStyle = '#1a3009';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(
+              sx + Math.cos(angle) * cactus.radius,
+              sy + Math.sin(angle) * cactus.radius
+            );
+            ctx.stroke();
+          }
+          
+          // Danger glow
+          ctx.strokeStyle = '#ff0000';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(sx, sy, cactus.radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       });
 
       // Draw cells
@@ -355,7 +483,8 @@ export const GameCanvas = () => {
               Agar.io Clone
             </h1>
             <p className="text-xl text-muted-foreground">
-              Eat to grow. Avoid bigger cells. Press SPACE to split.
+              Eat to grow. Avoid bigger cells and cacti.<br/>
+              Press W to eject mass. Press SPACE to split.
             </p>
             <button
               onClick={initGame}
