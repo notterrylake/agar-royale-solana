@@ -14,7 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      game_sessions: {
+        Row: {
+          created_at: string | null
+          ended_at: string | null
+          id: string
+          max_players: number | null
+          session_code: string
+          started_at: string | null
+          status: string | null
+          win_condition_food: number | null
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          max_players?: number | null
+          session_code: string
+          started_at?: string | null
+          status?: string | null
+          win_condition_food?: number | null
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          max_players?: number | null
+          session_code?: string
+          started_at?: string | null
+          status?: string | null
+          win_condition_food?: number | null
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
+      players: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_alive: boolean | null
+          last_updated: string | null
+          player_name: string
+          position_x: number | null
+          position_y: number | null
+          score: number | null
+          session_id: string | null
+          wallet_address: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_alive?: boolean | null
+          last_updated?: string | null
+          player_name: string
+          position_x?: number | null
+          position_y?: number | null
+          score?: number | null
+          session_id?: string | null
+          wallet_address?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_alive?: boolean | null
+          last_updated?: string | null
+          player_name?: string
+          position_x?: number | null
+          position_y?: number | null
+          score?: number | null
+          session_id?: string | null
+          wallet_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

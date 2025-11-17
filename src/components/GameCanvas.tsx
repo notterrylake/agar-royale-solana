@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Leaderboard } from './Leaderboard';
+import { WinnerScreen } from './WinnerScreen';
+import { PhantomWallet } from './PhantomWallet';
 
 interface Cell {
   x: number;
@@ -25,6 +29,13 @@ interface Cactus {
   radius: number;
 }
 
+interface GameCanvasProps {
+  sessionId: string;
+  playerId: string;
+  sessionCode: string;
+  onPlayAgain: () => void;
+}
+
 const COLORS = [
   '#00ffff', '#ff00ff', '#ff00aa', '#00ff88', '#ffaa00', '#0088ff',
   '#ff0066', '#00ff00', '#ff6600', '#0066ff'
@@ -32,25 +43,99 @@ const COLORS = [
 
 const WORLD_SIZE = 3000;
 const FOOD_COUNT = 500;
-const BOT_COUNT = 15;
 const CACTUS_COUNT = 30;
 const MAX_PLAYER_CELLS = 16;
+const WIN_CONDITION = 100;
 
-export const GameCanvas = () => {
+export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
+  const [players, setPlayers] = useState<any[]>([]);
+  const [gameEnded, setGameEnded] = useState(false);
+  const [winner, setWinner] = useState<{ name: string; isMe: boolean } | null>(null);
   const mousePos = useRef({ x: 0, y: 0 });
   const playerCells = useRef<Cell[]>([]);
-  const botCells = useRef<Cell[]>([]);
   const foods = useRef<Food[]>([]);
   const cacti = useRef<Cactus[]>([]);
   const cameraPos = useRef({ x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 });
   const cellIdCounter = useRef(0);
+  const foodEaten = useRef(0);
+
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      const { data } = await supabase
+        .from('players')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('score', { ascending: false });
+      
+      if (data) setPlayers(data);
+    };
+
+    fetchPlayers();
+
+    const channel = supabase
+      .channel(`game-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'players',
+          filter: `session_id=eq.${sessionId}`
+        },
+        (payload) => {
+          fetchPlayers();
+          
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            const player = payload.new as any;
+            if (player.score >= WIN_CONDITION && !gameEnded) {
+              handleGameWin(player);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId, gameEnded]);
+
+  const handleGameWin = async (winningPlayer: any) => {
+    setGameEnded(true);
+    const isMe = winningPlayer.id === playerId;
+    setWinner({ name: winningPlayer.player_name, isMe });
+
+    await supabase
+      .from('game_sessions')
+      .update({ status: 'ended', winner_id: winningPlayer.id, ended_at: new Date().toISOString() })
+      .eq('id', sessionId);
+
+    toast.success(isMe ? 'You won!' : `${winningPlayer.player_name} won!`);
+  };
+
+  const updatePlayerScore = async (newScore: number) => {
+    await supabase
+      .from('players')
+      .update({ score: newScore, last_updated: new Date().toISOString() })
+      .eq('id', playerId);
+  };
+
+  const handlePlayerDeath = async () => {
+    await supabase
+      .from('players')
+      .update({ is_alive: false })
+      .eq('id', playerId);
+  };
 
   const initGame = () => {
     cellIdCounter.current = 0;
-    // Initialize player
+    foodEaten.current = 0;
+    
+    const currentPlayer = players.find(p => p.id === playerId);
+    
     playerCells.current = [{
       x: WORLD_SIZE / 2,
       y: WORLD_SIZE / 2,
@@ -59,31 +144,16 @@ export const GameCanvas = () => {
       vx: 0,
       vy: 0,
       isPlayer: true,
-      name: 'You',
+      name: currentPlayer?.player_name || 'You',
       id: `player-${cellIdCounter.current++}`
     }];
 
-    // Initialize bots
-    botCells.current = Array.from({ length: BOT_COUNT }, (_, i) => ({
-      x: Math.random() * WORLD_SIZE,
-      y: Math.random() * WORLD_SIZE,
-      radius: 15 + Math.random() * 30,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      vx: 0,
-      vy: 0,
-      isPlayer: false,
-      name: `Bot ${i + 1}`,
-      id: `bot-${cellIdCounter.current++}`
-    }));
-
-    // Initialize food
     foods.current = Array.from({ length: FOOD_COUNT }, () => ({
       x: Math.random() * WORLD_SIZE,
       y: Math.random() * WORLD_SIZE,
       color: COLORS[Math.floor(Math.random() * COLORS.length)]
     }));
 
-    // Initialize cacti
     cacti.current = Array.from({ length: CACTUS_COUNT }, () => ({
       x: Math.random() * WORLD_SIZE,
       y: Math.random() * WORLD_SIZE,
@@ -92,7 +162,7 @@ export const GameCanvas = () => {
 
     setScore(0);
     setGameStarted(true);
-    toast.success('Game started! Move to control. W to eject mass. SPACE to split.');
+    toast.success('Game started! W to eject. SPACE to split.');
   };
 
   useEffect(() => {
@@ -128,9 +198,6 @@ export const GameCanvas = () => {
     window.addEventListener('keydown', handleKeyPress);
 
     const ejectMass = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
       playerCells.current.forEach(cell => {
         if (cell.radius > 15) {
           const angle = Math.atan2(
@@ -138,12 +205,9 @@ export const GameCanvas = () => {
             mousePos.current.x - canvas.width / 2
           );
           
-          // Reduce player cell size
           const massLoss = 2;
           cell.radius = Math.sqrt(Math.max(0, cell.radius ** 2 - massLoss ** 2));
           
-          // Create ejected mass as food
-          const ejectSpeed = 20;
           const ejectDistance = cell.radius + 10;
           foods.current.push({
             x: cell.x + Math.cos(angle) * ejectDistance,
@@ -159,9 +223,6 @@ export const GameCanvas = () => {
         toast.error('Maximum split reached!');
         return;
       }
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
 
       const newCells: Cell[] = [];
       playerCells.current.forEach(cell => {
@@ -194,47 +255,7 @@ export const GameCanvas = () => {
       playerCells.current = newCells;
     };
 
-    const updateBots = () => {
-      botCells.current.forEach(bot => {
-        // Simple AI: move towards nearest food or away from bigger cells
-        let targetX = bot.x;
-        let targetY = bot.y;
-        
-        const nearbyFood = foods.current.find(food => {
-          const dist = Math.hypot(food.x - bot.x, food.y - bot.y);
-          return dist < 200;
-        });
-
-        if (nearbyFood) {
-          targetX = nearbyFood.x;
-          targetY = nearbyFood.y;
-        } else {
-          targetX = bot.x + (Math.random() - 0.5) * 100;
-          targetY = bot.y + (Math.random() - 0.5) * 100;
-        }
-
-        const angle = Math.atan2(targetY - bot.y, targetX - bot.x);
-        const speed = Math.max(2, 8 - bot.radius / 10);
-        bot.vx = Math.cos(angle) * speed * 0.1;
-        bot.vy = Math.sin(angle) * speed * 0.1;
-
-        bot.x += bot.vx;
-        bot.y += bot.vy;
-
-        // Boundary check
-        bot.x = Math.max(bot.radius, Math.min(WORLD_SIZE - bot.radius, bot.x));
-        bot.y = Math.max(bot.radius, Math.min(WORLD_SIZE - bot.radius, bot.y));
-
-        // Friction
-        bot.vx *= 0.95;
-        bot.vy *= 0.95;
-      });
-    };
-
     const checkCollisions = () => {
-      const allCells = [...playerCells.current, ...botCells.current];
-      
-      // Check cactus collisions
       playerCells.current = playerCells.current.filter(cell => {
         for (const cactus of cacti.current) {
           const dist = Math.hypot(cell.x - cactus.x, cell.y - cactus.y);
@@ -246,60 +267,40 @@ export const GameCanvas = () => {
         return true;
       });
 
-      if (playerCells.current.length === 0 && gameStarted) {
-        toast.error('Game Over! Your score: ' + Math.floor(score));
+      if (playerCells.current.length === 0 && gameStarted && !gameEnded) {
+        toast.error('Game Over! Food eaten: ' + foodEaten.current);
+        handlePlayerDeath();
         setGameStarted(false);
         return;
       }
-      
-      // Check cell eating
-      for (let i = 0; i < allCells.length; i++) {
-        for (let j = i + 1; j < allCells.length; j++) {
-          const cell1 = allCells[i];
-          const cell2 = allCells[j];
-          const dist = Math.hypot(cell1.x - cell2.x, cell1.y - cell2.y);
-          
-          if (dist < Math.max(cell1.radius, cell2.radius)) {
-            if (cell1.radius > cell2.radius * 1.15) {
-              cell1.radius = Math.sqrt(cell1.radius ** 2 + cell2.radius ** 2);
-              if (cell2.isPlayer) {
-                playerCells.current = playerCells.current.filter(c => c.id !== cell2.id);
-                if (playerCells.current.length === 0) {
-                  toast.error('Game Over! Your score: ' + Math.floor(score));
-                  setGameStarted(false);
-                }
-              } else {
-                botCells.current = botCells.current.filter(c => c.id !== cell2.id);
-              }
-            } else if (cell2.radius > cell1.radius * 1.15) {
-              cell2.radius = Math.sqrt(cell1.radius ** 2 + cell2.radius ** 2);
-              if (cell1.isPlayer) {
-                playerCells.current = playerCells.current.filter(c => c.id !== cell1.id);
-                if (playerCells.current.length === 0) {
-                  toast.error('Game Over! Your score: ' + Math.floor(score));
-                  setGameStarted(false);
-                }
-              } else {
-                botCells.current = botCells.current.filter(c => c.id !== cell1.id);
-              }
-            }
-          }
-        }
-      }
 
-      // Check food eating
+      let foodEatenThisFrame = 0;
       playerCells.current.forEach(cell => {
         foods.current = foods.current.filter(food => {
           const dist = Math.hypot(cell.x - food.x, cell.y - food.y);
           if (dist < cell.radius) {
             cell.radius = Math.sqrt(cell.radius ** 2 + 9);
+            foodEatenThisFrame++;
             return false;
           }
           return true;
         });
       });
 
-      // Replenish food
+      if (foodEatenThisFrame > 0) {
+        foodEaten.current += foodEatenThisFrame;
+        const newScore = foodEaten.current;
+        setScore(newScore);
+        updatePlayerScore(newScore);
+        
+        if (newScore >= WIN_CONDITION && !gameEnded) {
+          const currentPlayer = players.find(p => p.id === playerId);
+          if (currentPlayer) {
+            handleGameWin(currentPlayer);
+          }
+        }
+      }
+
       while (foods.current.length < FOOD_COUNT) {
         foods.current.push({
           x: Math.random() * WORLD_SIZE,
@@ -307,33 +308,25 @@ export const GameCanvas = () => {
           color: COLORS[Math.floor(Math.random() * COLORS.length)]
         });
       }
-
-      // Update score
-      const totalMass = playerCells.current.reduce((sum, cell) => sum + Math.PI * cell.radius ** 2, 0);
-      setScore(totalMass / 10);
     };
 
     const gameLoop = () => {
       if (!gameStarted) return;
 
-      // Update player cells with slower, smoother movement
       playerCells.current.forEach(cell => {
         const dx = mousePos.current.x - canvas.width / 2;
         const dy = mousePos.current.y - canvas.height / 2;
         const dist = Math.hypot(dx, dy);
         
         if (dist > 10) {
-          // Much slower speed calculation
           const baseSpeed = 2.5;
           const speed = Math.max(0.8, baseSpeed - cell.radius / 30);
           const targetVx = (dx / dist) * speed;
           const targetVy = (dy / dist) * speed;
           
-          // Smooth interpolation for velocity
           cell.vx += (targetVx - cell.vx) * 0.15;
           cell.vy += (targetVy - cell.vy) * 0.15;
         } else {
-          // Gradually slow down when near target
           cell.vx *= 0.9;
           cell.vy *= 0.9;
         }
@@ -341,19 +334,15 @@ export const GameCanvas = () => {
         cell.x += cell.vx;
         cell.y += cell.vy;
 
-        // Boundary check
         cell.x = Math.max(cell.radius, Math.min(WORLD_SIZE - cell.radius, cell.x));
         cell.y = Math.max(cell.radius, Math.min(WORLD_SIZE - cell.radius, cell.y));
 
-        // Increased friction for smoother feel
         cell.vx *= 0.98;
         cell.vy *= 0.98;
       });
 
-      updateBots();
       checkCollisions();
 
-      // Update camera
       if (playerCells.current.length > 0) {
         const avgX = playerCells.current.reduce((sum, c) => sum + c.x, 0) / playerCells.current.length;
         const avgY = playerCells.current.reduce((sum, c) => sum + c.y, 0) / playerCells.current.length;
@@ -361,11 +350,9 @@ export const GameCanvas = () => {
         cameraPos.current.y += (avgY - cameraPos.current.y) * 0.1;
       }
 
-      // Render
       ctx.fillStyle = '#0a0e1a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw grid
       ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
       ctx.lineWidth = 1;
       const gridSize = 50;
@@ -387,7 +374,6 @@ export const GameCanvas = () => {
       const toScreenX = (x: number) => x - cameraPos.current.x + canvas.width / 2;
       const toScreenY = (y: number) => y - cameraPos.current.y + canvas.height / 2;
 
-      // Draw food
       foods.current.forEach(food => {
         const sx = toScreenX(food.x);
         const sy = toScreenY(food.y);
@@ -399,18 +385,15 @@ export const GameCanvas = () => {
         }
       });
 
-      // Draw cacti
       cacti.current.forEach(cactus => {
         const sx = toScreenX(cactus.x);
         const sy = toScreenY(cactus.y);
         if (sx > -100 && sx < canvas.width + 100 && sy > -100 && sy < canvas.height + 100) {
-          // Cactus body
           ctx.fillStyle = '#2d5016';
           ctx.beginPath();
           ctx.arc(sx, sy, cactus.radius, 0, Math.PI * 2);
           ctx.fill();
           
-          // Cactus spikes
           ctx.strokeStyle = '#1a3009';
           ctx.lineWidth = 2;
           for (let i = 0; i < 8; i++) {
@@ -424,7 +407,6 @@ export const GameCanvas = () => {
             ctx.stroke();
           }
           
-          // Danger glow
           ctx.strokeStyle = '#ff0000';
           ctx.lineWidth = 3;
           ctx.beginPath();
@@ -433,12 +415,10 @@ export const GameCanvas = () => {
         }
       });
 
-      // Draw cells
-      [...botCells.current, ...playerCells.current].forEach(cell => {
+      playerCells.current.forEach(cell => {
         const sx = toScreenX(cell.x);
         const sy = toScreenY(cell.y);
         
-        // Glow effect
         const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, cell.radius);
         gradient.addColorStop(0, cell.color);
         gradient.addColorStop(1, cell.color + '33');
@@ -448,12 +428,10 @@ export const GameCanvas = () => {
         ctx.arc(sx, sy, cell.radius, 0, Math.PI * 2);
         ctx.fill();
         
-        // Border
         ctx.strokeStyle = cell.isPlayer ? '#00ffff' : '#ffffff44';
         ctx.lineWidth = cell.isPlayer ? 3 : 2;
         ctx.stroke();
 
-        // Name
         if (cell.name) {
           ctx.fillStyle = '#ffffff';
           ctx.font = `${Math.max(12, cell.radius / 3)}px Arial`;
@@ -472,39 +450,51 @@ export const GameCanvas = () => {
       canvas.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [gameStarted, score]);
+  }, [gameStarted, score, players, playerId, gameEnded]);
 
   return (
     <div className="relative w-full h-screen bg-background">
-      {!gameStarted && (
+      {!gameStarted && !gameEnded && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-background/80 backdrop-blur-sm">
           <div className="text-center space-y-6">
             <h1 className="text-6xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              Agar.io Clone
+              Ready to Play
             </h1>
             <p className="text-xl text-muted-foreground">
-              Eat to grow. Avoid bigger cells and cacti.<br/>
-              Press W to eject mass. Press SPACE to split.
+              Session: {sessionCode}
+            </p>
+            <p className="text-lg text-muted-foreground">
+              First to eat {WIN_CONDITION} food wins!
             </p>
             <button
               onClick={initGame}
               className="px-8 py-4 text-xl font-bold rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity"
             >
-              Start Game
+              Start Playing
             </button>
           </div>
         </div>
       )}
+
+      {gameEnded && winner && (
+        <WinnerScreen
+          winnerName={winner.name}
+          isWinner={winner.isMe}
+          finalScore={score}
+          onPlayAgain={onPlayAgain}
+        />
+      )}
+
+      <div className="absolute top-4 left-4 z-20">
+        <PhantomWallet />
+      </div>
       
-      {gameStarted && (
-        <div className="absolute top-4 left-4 z-10 space-y-2">
-          <div className="px-6 py-3 rounded-xl bg-card/80 backdrop-blur-sm border border-primary/20">
-            <p className="text-2xl font-bold text-primary">Score: {Math.floor(score)}</p>
-          </div>
-          <div className="px-6 py-3 rounded-xl bg-card/80 backdrop-blur-sm border border-primary/20">
-            <p className="text-sm text-muted-foreground">Cells: {playerCells.current.length}</p>
-          </div>
-        </div>
+      {gameStarted && !gameEnded && (
+        <Leaderboard
+          players={players}
+          currentPlayerId={playerId}
+          sessionCode={sessionCode}
+        />
       )}
 
       <canvas ref={canvasRef} className="w-full h-full" />
