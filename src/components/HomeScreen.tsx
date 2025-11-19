@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { PhantomWallet } from './PhantomWallet';
+import { SpinningWheel } from './SpinningWheel';
 import { toast } from 'sonner';
+import { PublicKey } from '@solana/web3.js';
 
 interface HomeScreenProps {
   onStartGame: (playerName: string, sessionCode?: string) => void;
@@ -13,6 +15,7 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const [playerName, setPlayerName] = useState('');
   const [sessionCode, setSessionCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
+  const [walletPublicKey, setWalletPublicKey] = useState<PublicKey | null>(null);
 
   const handleCreate = () => {
     if (!playerName.trim()) {
@@ -37,7 +40,11 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background">
       <div className="absolute top-4 right-4">
-        <PhantomWallet />
+        <PhantomWallet onWalletChange={setWalletPublicKey} />
+      </div>
+
+      <div className="absolute top-4 left-4">
+        <SpinningWheel walletPublicKey={walletPublicKey} />
       </div>
 
       <div className="w-full max-w-md space-y-8 px-4">
