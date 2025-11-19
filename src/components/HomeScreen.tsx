@@ -42,30 +42,30 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
 
       <div className="w-full max-w-md space-y-8 px-4">
         <div className="text-center space-y-4">
-          <h1 className="text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent animate-fade-in">
+          <h1 className="text-7xl font-bold text-foreground tracking-tight animate-fade-in">
             Agar.io
           </h1>
-          <p className="text-xl text-muted-foreground">
+          <p className="text-lg text-muted-foreground font-light">
             Multiplayer Cell Battle Arena
           </p>
         </div>
 
         {mode === 'menu' && (
-          <Card className="p-8 space-y-4 bg-card/80 backdrop-blur-sm border-primary/20 animate-scale-in">
+          <Card className="p-8 space-y-4 bg-card shadow-lg border animate-scale-in">
             <Button
               onClick={() => setMode('create')}
-              className="w-full h-14 text-lg font-bold bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+              className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90"
             >
               Create New Game
             </Button>
             <Button
               onClick={() => setMode('join')}
               variant="outline"
-              className="w-full h-14 text-lg font-bold border-primary/40 hover:bg-primary/10"
+              className="w-full h-12 text-base font-medium border-2 hover:bg-muted"
             >
               Join Existing Game
             </Button>
-            <div className="pt-4 space-y-2 text-center text-sm text-muted-foreground">
+            <div className="pt-4 space-y-1.5 text-center text-xs text-muted-foreground">
               <p>• Max 50 players per game</p>
               <p>• First to eat 100 food wins</p>
               <p>• Press W to eject mass</p>
@@ -75,19 +75,19 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
         )}
 
         {mode === 'create' && (
-          <Card className="p-8 space-y-4 bg-card/80 backdrop-blur-sm border-primary/20 animate-scale-in">
-            <h2 className="text-2xl font-bold text-center">Create Game</h2>
+          <Card className="p-8 space-y-4 bg-card shadow-lg border animate-scale-in">
+            <h2 className="text-2xl font-bold text-center text-foreground">Create Game</h2>
             <Input
               placeholder="Enter your name"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              className="h-12 text-lg"
+              className="h-11 text-base"
               maxLength={20}
             />
             <div className="space-y-2">
               <Button
                 onClick={handleCreate}
-                className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+                className="w-full h-11 bg-primary hover:bg-primary/90 font-semibold"
               >
                 Start Game
               </Button>
@@ -103,26 +103,26 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
         )}
 
         {mode === 'join' && (
-          <Card className="p-8 space-y-4 bg-card/80 backdrop-blur-sm border-primary/20 animate-scale-in">
-            <h2 className="text-2xl font-bold text-center">Join Game</h2>
+          <Card className="p-8 space-y-4 bg-card shadow-lg border animate-scale-in">
+            <h2 className="text-2xl font-bold text-center text-foreground">Join Game</h2>
             <Input
               placeholder="Enter your name"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              className="h-12 text-lg"
+              className="h-11 text-base"
               maxLength={20}
             />
             <Input
               placeholder="Enter session code"
               value={sessionCode}
               onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-              className="h-12 text-lg font-mono"
+              className="h-11 text-base font-mono tracking-widest"
               maxLength={6}
             />
             <div className="space-y-2">
               <Button
                 onClick={handleJoin}
-                className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+                className="w-full h-11 bg-primary hover:bg-primary/90 font-semibold"
               >
                 Join Game
               </Button>
