@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { PhantomWallet } from './PhantomWallet';
-import { SpinningWheel } from './SpinningWheel';
 import { toast } from 'sonner';
-import { PublicKey } from '@solana/web3.js';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 
 interface HomeScreenProps {
   onStartGame: (playerName: string, sessionCode?: string) => void;
@@ -15,7 +14,7 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const [playerName, setPlayerName] = useState('');
   const [sessionCode, setSessionCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
-  const [walletPublicKey, setWalletPublicKey] = useState<PublicKey | null>(null);
+  const navigate = useNavigate();
 
   const handleCreate = () => {
     if (!playerName.trim()) {
@@ -39,12 +38,16 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background">
-      <div className="absolute top-4 right-4">
-        <PhantomWallet onWalletChange={setWalletPublicKey} />
-      </div>
-
       <div className="absolute top-4 left-4">
-        <SpinningWheel walletPublicKey={walletPublicKey} />
+        <Button
+          onClick={() => navigate('/spin-wheel')}
+          variant="outline"
+          size="sm"
+          className="gap-2 bg-primary/10 hover:bg-primary/20 border-primary/20"
+        >
+          <Sparkles className="h-4 w-4" />
+          Spinning Wheel
+        </Button>
       </div>
 
       <div className="w-full max-w-md space-y-8 px-4">
