@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { PublicKey } from '@solana/web3.js';
 
 interface PhantomProvider {
   isPhantom?: boolean;
@@ -11,7 +12,11 @@ interface PhantomProvider {
   publicKey?: { toString: () => string };
 }
 
-export const PhantomWallet = () => {
+interface PhantomWalletProps {
+  onWalletChange?: (publicKey: any) => void;
+}
+
+export const PhantomWallet = ({ onWalletChange }: PhantomWalletProps) => {
   const [connected, setConnected] = useState(false);
   const [publicKey, setPublicKey] = useState<string>('');
   const [provider, setProvider] = useState<PhantomProvider | null>(null);
@@ -32,14 +37,17 @@ export const PhantomWallet = () => {
 
     if (phantomProvider?.publicKey) {
       setConnected(true);
-      setPublicKey(phantomProvider.publicKey.toString());
+      const pkString = phantomProvider.publicKey.toString();
+      setPublicKey(pkString);
+      onWalletChange?.(new PublicKey(pkString));
     }
 
     phantomProvider?.on('disconnect', () => {
       setConnected(false);
       setPublicKey('');
+      onWalletChange?.(null);
     });
-  }, []);
+  }, [onWalletChange]);
 
   const connectWallet = async () => {
     if (!provider) {
@@ -50,8 +58,10 @@ export const PhantomWallet = () => {
 
     try {
       const response = await provider.connect();
+      const pkString = response.publicKey.toString();
       setConnected(true);
-      setPublicKey(response.publicKey.toString());
+      setPublicKey(pkString);
+      onWalletChange?.(new PublicKey(pkString));
       toast.success('Wallet connected successfully!');
     } catch (err) {
       toast.error('Failed to connect wallet');
@@ -65,6 +75,7 @@ export const PhantomWallet = () => {
         await provider.disconnect();
         setConnected(false);
         setPublicKey('');
+        onWalletChange?.(null);
         toast.success('Wallet disconnected');
       } catch (err) {
         toast.error('Failed to disconnect wallet');
