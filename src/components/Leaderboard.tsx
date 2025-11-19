@@ -18,67 +18,66 @@ export const Leaderboard = ({ players, currentPlayerId, sessionCode }: Leaderboa
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score).slice(0, 10);
 
   return (
-    <div className="fixed top-4 right-4 w-80 space-y-2 z-20">
+    <div className="fixed top-4 right-4 w-56 space-y-2 z-20">
       {sessionCode && (
-        <Card className="p-4 bg-card/95 backdrop-blur-sm border shadow-md">
+        <Card className="p-2 bg-card/40 backdrop-blur-sm border-border/30">
           <div className="text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Session Code</p>
-            <p className="text-xl font-bold font-mono tracking-widest text-foreground">{sessionCode}</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Code</p>
+            <p className="text-xs font-semibold font-mono tracking-wide text-foreground">{sessionCode}</p>
           </div>
         </Card>
       )}
       
-      <Card className="p-4 bg-card/95 backdrop-blur-sm border shadow-md">
-        <div className="flex items-center gap-2 mb-3">
-          <Trophy className="w-5 h-5 text-foreground" />
-          <h3 className="text-lg font-semibold text-foreground">Leaderboard</h3>
+      <Card className="p-3 bg-card/40 backdrop-blur-sm border-border/30">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Trophy className="w-3.5 h-3.5 text-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">Top 10</h3>
         </div>
         
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {sortedPlayers.map((player, index) => (
             <div
               key={player.id}
-              className={`flex items-center justify-between p-2 rounded-md transition-all ${
+              className={`flex items-center justify-between p-1.5 rounded transition-all ${
                 player.id === currentPlayerId
-                  ? 'bg-primary/10 border border-primary'
-                  : 'bg-muted/30'
-              } ${!player.is_alive ? 'opacity-50' : ''}`}
+                  ? 'bg-primary/15 border border-primary/50'
+                  : 'bg-muted/20'
+              } ${!player.is_alive ? 'opacity-40' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-6">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-4">
                   {index === 0 ? (
-                    <Crown className="w-4 h-4 text-foreground" />
+                    <Crown className="w-3 h-3 text-foreground" />
                   ) : (
-                    <span className="text-sm font-semibold text-muted-foreground">
+                    <span className="text-[10px] font-semibold text-muted-foreground">
                       {index + 1}
                     </span>
                   )}
                 </div>
                 <div>
-                  <p className="font-medium text-sm truncate max-w-[150px] text-foreground">
+                  <p className="font-medium text-xs truncate max-w-[100px] text-foreground leading-tight">
                     {player.player_name}
                     {player.id === currentPlayerId && (
-                      <span className="text-xs text-primary ml-1">(You)</span>
+                      <span className="text-[9px] text-primary ml-1">(You)</span>
                     )}
                   </p>
                   {!player.is_alive && (
-                    <p className="text-xs text-destructive">Eliminated</p>
+                    <p className="text-[9px] text-destructive leading-tight">Out</p>
                   )}
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-sm text-foreground">
+                <p className="font-semibold text-xs text-foreground">
                   {Math.floor(player.score)}
                 </p>
-                <p className="text-xs text-muted-foreground">food</p>
               </div>
             </div>
           ))}
         </div>
 
         {sortedPlayers.length === 0 && (
-          <p className="text-center text-muted-foreground py-4">
-            No players yet
+          <p className="text-center text-muted-foreground text-xs py-3">
+            No players
           </p>
         )}
       </Card>
