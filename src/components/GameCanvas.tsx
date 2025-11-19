@@ -454,6 +454,10 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
 
   return (
     <div className="relative w-full h-screen bg-background">
+      <div className="absolute top-4 left-4 z-20">
+        <PhantomWallet />
+      </div>
+
       {!gameStarted && !gameEnded && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-background/80 backdrop-blur-sm">
           <div className="text-center space-y-6">
@@ -484,10 +488,6 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
           onPlayAgain={onPlayAgain}
         />
       )}
-
-      <div className="absolute top-4 left-4 z-20">
-        <PhantomWallet />
-      </div>
       
       {gameStarted && !gameEnded && (
         <Leaderboard
