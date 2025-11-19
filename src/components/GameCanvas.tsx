@@ -53,6 +53,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
   const [gameStarted, setGameStarted] = useState(false);
   const [players, setPlayers] = useState<any[]>([]);
   const [gameEnded, setGameEnded] = useState(false);
+  const [playerDied, setPlayerDied] = useState(false);
   const [winner, setWinner] = useState<{ name: string; isMe: boolean } | null>(null);
   const mousePos = useRef({ x: 0, y: 0 });
   const playerCells = useRef<Cell[]>([]);
@@ -267,10 +268,14 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
         return true;
       });
 
-      if (playerCells.current.length === 0 && gameStarted && !gameEnded) {
-        toast.error('Game Over! Food eaten: ' + foodEaten.current);
+      if (playerCells.current.length === 0 && gameStarted && !gameEnded && !playerDied) {
+        setPlayerDied(true);
         handlePlayerDeath();
         setGameStarted(false);
+        
+        setTimeout(() => {
+          onPlayAgain();
+        }, 2500);
         return;
       }
 
@@ -481,6 +486,22 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
         </div>
       )}
 
+      {playerDied && (
+        <div className="absolute inset-0 flex items-center justify-center z-50 bg-background/90 backdrop-blur-md">
+          <div className="text-center space-y-4 animate-scale-in">
+            <h1 className="text-7xl font-bold text-foreground tracking-tight">
+              You Died
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Food eaten: {Math.floor(score)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Returning to lobby...
+            </p>
+          </div>
+        </div>
+      )}
+
       {gameEnded && winner && (
         <WinnerScreen
           winnerName={winner.name}
@@ -490,7 +511,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
         />
       )}
       
-      {gameStarted && !gameEnded && (
+      {gameStarted && !gameEnded && !playerDied && (
         <Leaderboard
           players={players}
           currentPlayerId={playerId}
