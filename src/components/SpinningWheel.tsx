@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import confetti from 'canvas-confetti';
 
 interface SpinningWheelProps {
   walletPublicKey: PublicKey | null;
@@ -17,6 +18,55 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   const SLICES = 20;
   const WINNING_SLICE = 10; // Position of the "Win" reward
   const SLICE_ANGLE = 360 / SLICES;
+
+  const playWinSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+    oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+    oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  };
+
+  const triggerConfetti = () => {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+    const randomInRange = (min: number, max: number) => {
+      return Math.random() * (max - min) + min;
+    };
+
+    const interval: any = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      });
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      });
+    }, 250);
+  };
 
   const handleSpin = async () => {
     if (!walletPublicKey) {
@@ -79,6 +129,8 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
       setTimeout(() => {
         setIsSpinning(false);
         if (isWin) {
+          playWinSound();
+          triggerConfetti();
           toast.success('🎉 Congratulations! You won!');
         } else {
           toast.info('Better luck next time!');
@@ -122,13 +174,14 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
               >
                 <div
                   className={`absolute w-0 h-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${
-                    i === WINNING_SLICE ? 'border-l-[128px] border-r-[128px] border-b-[128px]' : 'border-l-[128px] border-r-[128px] border-b-[128px]'
+                    i === WINNING_SLICE ? 'border-l-[128px] border-r-[128px] border-b-[128px] animate-pulse' : 'border-l-[128px] border-r-[128px] border-b-[128px]'
                   }`}
                   style={{
                     borderLeftColor: 'transparent',
                     borderRightColor: 'transparent',
                     borderBottomColor: i === WINNING_SLICE ? 'hsl(var(--primary))' : i % 2 === 0 ? 'hsl(var(--muted))' : 'hsl(var(--muted-foreground) / 0.3)',
                     transform: 'rotate(180deg)',
+                    boxShadow: i === WINNING_SLICE ? '0 0 20px hsl(var(--primary))' : 'none',
                   }}
                 />
                 {i === WINNING_SLICE && (
