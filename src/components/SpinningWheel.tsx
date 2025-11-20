@@ -15,7 +15,7 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
 
   const SPIN_COST = 0.01; // SOL
   const SLICES = 20;
-  const WINNING_SLICE = 10; // Position of the "Airdrop" reward
+  const WINNING_SLICE = 10; // Position of the "Win" reward
   const SLICE_ANGLE = 360 / SLICES;
 
   const handleSpin = async () => {
@@ -79,7 +79,7 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
       setTimeout(() => {
         setIsSpinning(false);
         if (isWin) {
-          toast.success('🎉 Congratulations! You won the Airdrop!');
+          toast.success('🎉 Congratulations! You won!');
         } else {
           toast.info('Better luck next time!');
         }
@@ -133,14 +133,14 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
                 />
                 {i === WINNING_SLICE && (
                   <div
-                    className="absolute text-xs font-bold text-primary-foreground whitespace-nowrap"
+                    className="absolute text-[10px] font-bold text-primary-foreground whitespace-nowrap"
                     style={{
                       top: '60%',
                       left: '50%',
                       transform: 'translate(-50%, -50%) rotate(90deg)',
                     }}
                   >
-                    AIRDROP
+                    Win
                   </div>
                 )}
               </div>
