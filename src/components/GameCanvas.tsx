@@ -324,9 +324,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
         const dist = Math.hypot(dx, dy);
         
         if (dist > 10) {
-          const baseSpeed = 2.5;
-          const speedBonus = Math.min(3, foodEaten.current * 0.02);
-          const speed = baseSpeed + speedBonus;
+          const speed = 2.5;
           const targetVx = (dx / dist) * speed;
           const targetVy = (dy / dist) * speed;
           
