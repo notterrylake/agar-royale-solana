@@ -4,6 +4,8 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import confetti from 'canvas-confetti';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Copy, Check } from 'lucide-react';
 
 interface SpinningWheelProps {
   walletPublicKey: PublicKey | null;
@@ -12,6 +14,9 @@ interface SpinningWheelProps {
 export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [winningHash, setWinningHash] = useState<string | null>(null);
+  const [showWinDialog, setShowWinDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const SPIN_COST = 0.01; // SOL
@@ -66,6 +71,22 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
         origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
       });
     }, 250);
+  };
+
+  const generateWinningHash = () => {
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 15);
+    const hash = `WIN-${timestamp}-${randomStr}`.toUpperCase();
+    return hash;
+  };
+
+  const copyToClipboard = async () => {
+    if (winningHash) {
+      await navigator.clipboard.writeText(winningHash);
+      setCopied(true);
+      toast.success('Hash code copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleSpin = async () => {
@@ -129,9 +150,11 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
       setTimeout(() => {
         setIsSpinning(false);
         if (isWin) {
+          const hash = generateWinningHash();
+          setWinningHash(hash);
           playWinSound();
           triggerConfetti();
-          toast.success('🎉 Congratulations! You won!');
+          setShowWinDialog(true);
         } else {
           toast.info('Better luck next time!');
         }
@@ -149,8 +172,46 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   };
 
   return (
-    <Card className="p-6 bg-card/50 backdrop-blur-sm border shadow-lg">
-      <div className="space-y-4">
+    <>
+      <Dialog open={showWinDialog} onOpenChange={setShowWinDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">🎉 Congratulations! You Won!</DialogTitle>
+            <DialogDescription>
+              Save this unique hash code and send it to our team to receive your funds.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg border-2 border-primary">
+              <p className="text-xs text-muted-foreground mb-2">Your Winning Hash Code:</p>
+              <p className="font-mono text-sm break-all font-bold text-foreground">{winningHash}</p>
+            </div>
+            <Button
+              onClick={copyToClipboard}
+              className="w-full"
+              variant="default"
+            >
+              {copied ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy Hash Code
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Please keep this code safe. You'll need it to claim your prize.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Card className="p-6 bg-card/50 backdrop-blur-sm border shadow-lg">
+        <div className="space-y-4">
         <h3 className="text-xl font-bold text-center text-foreground">Lucky Spin</h3>
         
         <div className="relative w-64 h-64 mx-auto">
@@ -223,5 +284,6 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
         </div>
       </div>
     </Card>
+    </>
   );
 };
