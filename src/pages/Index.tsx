@@ -3,18 +3,20 @@ import { GameCanvas } from '@/components/GameCanvas';
 import { HomeScreen } from '@/components/HomeScreen';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SkinType } from '@/components/SkinSelector';
 
 const Index = () => {
   const [gameState, setGameState] = useState<'home' | 'playing'>('home');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [sessionCode, setSessionCode] = useState<string | null>(null);
+  const [selectedSkin, setSelectedSkin] = useState<SkinType | null>(null);
 
   const generateSessionCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  const handleStartGame = async (playerName: string, joinCode?: string) => {
+  const handleStartGame = async (playerName: string, skin: SkinType, joinCode?: string) => {
     try {
       if (joinCode) {
         // Join existing game
@@ -61,6 +63,7 @@ const Index = () => {
         setSessionId(session.id);
         setPlayerId(player.id);
         setSessionCode(session.session_code);
+        setSelectedSkin(skin);
         setGameState('playing');
         toast.success(`Joined game ${joinCode}`);
       } else {
@@ -103,6 +106,7 @@ const Index = () => {
         setSessionId(session.id);
         setPlayerId(player.id);
         setSessionCode(session.session_code);
+        setSelectedSkin(skin);
         setGameState('playing');
         toast.success(`Game created! Share code: ${code}`);
       }
@@ -117,6 +121,7 @@ const Index = () => {
     setSessionId(null);
     setPlayerId(null);
     setSessionCode(null);
+    setSelectedSkin(null);
   };
 
   return (
@@ -129,6 +134,7 @@ const Index = () => {
           playerId={playerId!}
           sessionCode={sessionCode!}
           onPlayAgain={handlePlayAgain}
+          selectedSkin={selectedSkin!}
         />
       )}
     </div>
