@@ -174,21 +174,21 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   return (
     <>
       <Dialog open={showWinDialog} onOpenChange={setShowWinDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-2xl">🎉 Congratulations! You Won!</DialogTitle>
-            <DialogDescription>
-              Save this unique hash code and send it to our team to receive your funds.
+            <DialogTitle className="text-3xl font-extrabold uppercase tracking-tight">🎉 You Won!</DialogTitle>
+            <DialogDescription className="text-muted-foreground/80">
+              Save this hash code and send it to our team to claim your prize.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-muted p-4 rounded-lg border-2 border-primary">
-              <p className="text-xs text-muted-foreground mb-2">Your Winning Hash Code:</p>
-              <p className="font-mono text-sm break-all font-bold text-foreground">{winningHash}</p>
+          <div className="space-y-5">
+            <div className="bg-white/5 p-5 rounded-lg border-2 border-white/20">
+              <p className="text-xs text-muted-foreground/70 mb-3 uppercase tracking-wider">Your Winning Hash Code:</p>
+              <p className="font-mono text-sm break-all font-bold text-white">{winningHash}</p>
             </div>
             <Button
               onClick={copyToClipboard}
-              className="w-full"
+              className="w-full h-12 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-wide"
               variant="default"
             >
               {copied ? (
@@ -203,22 +203,21 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
                 </>
               )}
             </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Please keep this code safe. You'll need it to claim your prize.
+            <p className="text-xs text-muted-foreground/70 text-center">
+              Keep this code safe to claim your prize.
             </p>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Card className="p-6 bg-card/50 backdrop-blur-sm border shadow-lg">
-        <div className="space-y-4">
-        <h3 className="text-xl font-bold text-center text-foreground">Lucky Spin</h3>
+      <Card className="p-8 bg-card/80 backdrop-blur-xl border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+        <div className="space-y-6">
         
         <div className="relative w-64 h-64 mx-auto">
           {/* Wheel container */}
           <div 
             ref={wheelRef}
-            className="absolute inset-0 rounded-full border-4 border-primary shadow-xl overflow-hidden"
+            className="absolute inset-0 rounded-full border-[6px] border-white shadow-[0_0_60px_rgba(255,255,255,0.2)] overflow-hidden"
             style={{
               transform: `rotate(${rotation}deg)`,
               transition: isSpinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
@@ -261,23 +260,23 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
             ))}
             
             {/* Center circle */}
-            <div className="absolute inset-1/2 w-12 h-12 -translate-x-1/2 -translate-y-1/2 bg-background rounded-full border-2 border-primary flex items-center justify-center">
-              <div className="text-xs font-bold text-foreground">SPIN</div>
+            <div className="absolute inset-1/2 w-16 h-16 -translate-x-1/2 -translate-y-1/2 bg-black rounded-full border-4 border-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)]">
+              <div className="text-[10px] font-extrabold text-white uppercase tracking-wider">SPIN</div>
             </div>
           </div>
 
           {/* Pointer */}
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-primary z-10 drop-shadow-lg" />
+          <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-[24px] border-l-transparent border-r-transparent border-t-white z-10 drop-shadow-[0_4px_8px_rgba(255,255,255,0.3)]" />
         </div>
 
-        <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Cost: <span className="font-semibold text-foreground">{SPIN_COST} SOL</span>
+        <div className="text-center space-y-4">
+          <p className="text-sm text-muted-foreground/80 font-medium">
+            Cost: <span className="font-bold text-white">{SPIN_COST} SOL</span>
           </p>
           <Button
             onClick={handleSpin}
             disabled={isSpinning || !walletPublicKey}
-            className="w-full h-11 bg-primary hover:bg-primary/90 font-semibold"
+            className="w-full h-14 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-wide shadow-lg disabled:opacity-50"
           >
             {isSpinning ? 'Spinning...' : walletPublicKey ? 'Spin the Wheel' : 'Connect Wallet'}
           </Button>
