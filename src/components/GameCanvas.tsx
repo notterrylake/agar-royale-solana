@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Leaderboard } from './Leaderboard';
 import { WinnerScreen } from './WinnerScreen';
 import { PhantomWallet } from './PhantomWallet';
+import { SkinType, getSkinImage } from './SkinSelector';
 
 interface Cell {
   x: number;
@@ -34,6 +35,7 @@ interface GameCanvasProps {
   playerId: string;
   sessionCode: string;
   onPlayAgain: () => void;
+  selectedSkin: SkinType;
 }
 
 const COLORS = [
@@ -47,7 +49,7 @@ const CACTUS_COUNT = 30;
 const MAX_PLAYER_CELLS = 16;
 const WIN_CONDITION = 100;
 
-export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: GameCanvasProps) => {
+export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, selectedSkin }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
@@ -62,6 +64,19 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
   const cameraPos = useRef({ x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 });
   const cellIdCounter = useRef(0);
   const foodEaten = useRef(0);
+  const skinImg = useRef<HTMLImageElement | null>(null);
+
+  // Load skin image
+  useEffect(() => {
+    const skinSrc = getSkinImage(selectedSkin);
+    if (skinSrc) {
+      const img = new Image();
+      img.src = skinSrc;
+      img.onload = () => {
+        skinImg.current = img;
+      };
+    }
+  }, [selectedSkin]);
 
   useEffect(() => {
     const fetchPlayers = async () => {
@@ -425,6 +440,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
         const sx = toScreenX(cell.x);
         const sy = toScreenY(cell.y);
         
+        // Draw cell background
         const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, cell.radius);
         gradient.addColorStop(0, cell.color);
         gradient.addColorStop(1, cell.color + '33');
@@ -438,7 +454,25 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
         ctx.lineWidth = cell.isPlayer ? 3 : 2;
         ctx.stroke();
 
-        if (cell.name) {
+        // Draw skin image on player cells
+        if (cell.isPlayer && skinImg.current) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(sx, sy, cell.radius * 0.8, 0, Math.PI * 2);
+          ctx.clip();
+          
+          const skinSize = cell.radius * 1.6;
+          ctx.drawImage(
+            skinImg.current,
+            sx - skinSize / 2,
+            sy - skinSize / 2,
+            skinSize,
+            skinSize
+          );
+          ctx.restore();
+        }
+
+        if (cell.name && !cell.isPlayer) {
           ctx.fillStyle = '#ffffff';
           ctx.font = `${Math.max(12, cell.radius / 3)}px Arial`;
           ctx.textAlign = 'center';

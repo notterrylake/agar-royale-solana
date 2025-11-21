@@ -5,15 +5,18 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
+import { SkinSelector, SkinType } from '@/components/SkinSelector';
 
 interface HomeScreenProps {
-  onStartGame: (playerName: string, sessionCode?: string) => void;
+  onStartGame: (playerName: string, skin: SkinType, sessionCode?: string) => void;
 }
 
 export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const [playerName, setPlayerName] = useState('');
   const [sessionCode, setSessionCode] = useState('');
-  const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
+  const [mode, setMode] = useState<'menu' | 'create' | 'join' | 'selectSkin'>('menu');
+  const [selectedSkin, setSelectedSkin] = useState<SkinType | null>(null);
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | undefined>();
   const navigate = useNavigate();
 
   const handleCreate = () => {
@@ -21,7 +24,8 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
       toast.error('Please enter your name');
       return;
     }
-    onStartGame(playerName);
+    setPendingJoinCode(undefined);
+    setMode('selectSkin');
   };
 
   const handleJoin = () => {
@@ -33,7 +37,14 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
       toast.error('Please enter a session code');
       return;
     }
-    onStartGame(playerName, sessionCode);
+    setPendingJoinCode(sessionCode);
+    setMode('selectSkin');
+  };
+
+  const handleSkinConfirm = () => {
+    if (selectedSkin) {
+      onStartGame(playerName, selectedSkin, pendingJoinCode);
+    }
   };
 
   return (
@@ -146,6 +157,15 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
               </Button>
             </div>
           </Card>
+        )}
+
+        {mode === 'selectSkin' && (
+          <SkinSelector
+            selectedSkin={selectedSkin}
+            onSelectSkin={setSelectedSkin}
+            onConfirm={handleSkinConfirm}
+            onBack={() => setMode(pendingJoinCode ? 'join' : 'create')}
+          />
         )}
       </div>
     </div>
