@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import confetti from 'canvas-confetti';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Zap } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface SpinningWheelProps {
   walletPublicKey: PublicKey | null;
@@ -17,6 +19,7 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   const [winningHash, setWinningHash] = useState<string | null>(null);
   const [showWinDialog, setShowWinDialog] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [testMode, setTestMode] = useState(false);
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const SPIN_COST = 0.01; // SOL
@@ -76,7 +79,8 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   const generateWinningHash = () => {
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
-    const hash = `AIRDROP-${timestamp}-${randomStr}`.toUpperCase();
+    const prefix = testMode ? 'TEST-AIRDROP' : 'AIRDROP';
+    const hash = `${prefix}-${timestamp}-${randomStr}`.toUpperCase();
     return hash;
   };
 
@@ -90,7 +94,7 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   };
 
   const handleSpin = async () => {
-    if (!walletPublicKey) {
+    if (!testMode && !walletPublicKey) {
       toast.error('Please connect your Phantom wallet first');
       return;
     }
@@ -100,40 +104,45 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
     try {
       setIsSpinning(true);
 
-      // Get Phantom provider
-      const provider = (window as any).phantom?.solana;
-      if (!provider) {
-        toast.error('Phantom wallet not found');
-        setIsSpinning(false);
-        return;
+      // Skip payment in test mode
+      if (!testMode) {
+        // Get Phantom provider
+        const provider = (window as any).phantom?.solana;
+        if (!provider) {
+          toast.error('Phantom wallet not found');
+          setIsSpinning(false);
+          return;
+        }
+
+        // Create Solana connection (mainnet-beta for production, devnet for testing)
+        const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+
+        // Treasury wallet address (replace with your actual wallet)
+        const treasuryPublicKey = new PublicKey('11111111111111111111111111111111');
+
+        // Create transaction
+        const transaction = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey: walletPublicKey!,
+            toPubkey: treasuryPublicKey,
+            lamports: SPIN_COST * LAMPORTS_PER_SOL,
+          })
+        );
+
+        // Get recent blockhash
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = walletPublicKey!;
+
+        // Sign and send transaction
+        const signed = await provider.signTransaction(transaction);
+        const signature = await connection.sendRawTransaction(signed.serialize());
+        await connection.confirmTransaction(signature);
+
+        toast.success('Payment successful! Spinning...');
+      } else {
+        toast.info('Test Mode - No payment required!');
       }
-
-      // Create Solana connection (mainnet-beta for production, devnet for testing)
-      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-
-      // Treasury wallet address (replace with your actual wallet)
-      const treasuryPublicKey = new PublicKey('11111111111111111111111111111111');
-
-      // Create transaction
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: walletPublicKey,
-          toPubkey: treasuryPublicKey,
-          lamports: SPIN_COST * LAMPORTS_PER_SOL,
-        })
-      );
-
-      // Get recent blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = walletPublicKey;
-
-      // Sign and send transaction
-      const signed = await provider.signTransaction(transaction);
-      const signature = await connection.sendRawTransaction(signed.serialize());
-      await connection.confirmTransaction(signature);
-
-      toast.success('Payment successful! Spinning...');
 
       // Determine result (5% chance to win)
       const isWin = Math.random() < 0.05;
@@ -213,6 +222,29 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
       <Card className="p-8 bg-card/80 backdrop-blur-xl border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
         <div className="space-y-6">
         
+        {/* Test Mode Toggle */}
+        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border/50">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-yellow-500" />
+            <Label htmlFor="test-mode" className="text-sm font-medium cursor-pointer">
+              Test Mode {testMode && <span className="text-yellow-500">(Active)</span>}
+            </Label>
+          </div>
+          <Switch
+            id="test-mode"
+            checked={testMode}
+            onCheckedChange={setTestMode}
+          />
+        </div>
+
+        {testMode && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+            <p className="text-xs text-yellow-500/90 font-medium text-center">
+              🧪 Test mode enabled - No wallet connection or payment required
+            </p>
+          </div>
+        )}
+        
         <div className="relative w-64 h-64 mx-auto">
           {/* Wheel container */}
           <div 
@@ -276,14 +308,17 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
 
         <div className="text-center space-y-4">
           <p className="text-sm text-muted-foreground/80 font-medium">
-            Cost: <span className="font-bold text-white">{SPIN_COST} SOL</span>
+            Cost: <span className="font-bold text-white">
+              {testMode ? 'FREE' : `${SPIN_COST} SOL`}
+            </span>
+            {testMode && <span className="ml-2 text-yellow-500">(Test Mode)</span>}
           </p>
           <Button
             onClick={handleSpin}
-            disabled={isSpinning || !walletPublicKey}
+            disabled={isSpinning || (!testMode && !walletPublicKey)}
             className="w-full h-14 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-wide shadow-lg disabled:opacity-50"
           >
-            {isSpinning ? 'Spinning...' : walletPublicKey ? 'Spin the Wheel' : 'Connect Wallet'}
+            {isSpinning ? 'Spinning...' : testMode ? 'Test Spin' : walletPublicKey ? 'Spin the Wheel' : 'Connect Wallet'}
           </Button>
         </div>
       </div>
