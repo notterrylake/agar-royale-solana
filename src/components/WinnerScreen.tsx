@@ -11,9 +11,12 @@ interface WinnerScreenProps {
   onPlayAgain: () => void;
   playerId: string;
   potAmount?: number;
+  winnerAmount?: number;
+  teamFee?: number;
+  payoutSignature?: string;
 }
 
-export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain, playerId, potAmount = 0.15 }: WinnerScreenProps) => {
+export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain, playerId, potAmount = 0.15, winnerAmount, teamFee, payoutSignature }: WinnerScreenProps) => {
   const [countdown, setCountdown] = useState(5);
   const [canPlayAgain, setCanPlayAgain] = useState(false);
 
@@ -53,10 +56,27 @@ export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain, pl
               <h1 className="text-7xl font-extrabold text-white tracking-tighter uppercase" style={{ letterSpacing: '-0.05em' }}>
                 Victory
               </h1>
-              <div className="inline-block px-6 py-3 rounded-full bg-primary/30 border-2 border-primary">
-                <span className="text-3xl font-extrabold text-primary">
-                  WON {potAmount} SOL!
-                </span>
+              <div className="space-y-3">
+                <div className="inline-block px-6 py-3 rounded-full bg-primary/30 border-2 border-primary">
+                  <span className="text-3xl font-extrabold text-primary">
+                    WON {winnerAmount ? winnerAmount.toFixed(4) : (potAmount * 0.95).toFixed(4)} SOL!
+                  </span>
+                </div>
+                {teamFee && (
+                  <p className="text-sm text-muted-foreground">
+                    (Total pot: {potAmount.toFixed(4)} SOL - {teamFee.toFixed(4)} SOL team fee)
+                  </p>
+                )}
+                {payoutSignature && (
+                  <a
+                    href={`https://explorer.solana.com/tx/${payoutSignature}?cluster=devnet`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:text-primary/80 underline block"
+                  >
+                    View transaction on Solana Explorer
+                  </a>
+                )}
               </div>
               <p className="text-xl text-white/70 font-light">You are the champion!</p>
             </>
