@@ -34,7 +34,7 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const navigate = useNavigate();
 
   // Treasury wallet - Replace with your actual treasury address
-  const TREASURY_WALLET = new PublicKey('9B5XszUGdMaxCZ7uSQhPzdks5ZQSmWxrmzCSvtJ6Ns6g');
+  const TREASURY_WALLET = new PublicKey('5HSvfmyninkzkRdpDwNm6BGiwm9QFMJ4wzFFtEpPmadp');
   const BET_AMOUNT = 0.05;
 
   const handlePaymentAndJoin = async (joinCode?: string, isQuickPlay: boolean = false) => {
