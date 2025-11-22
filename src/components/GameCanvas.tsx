@@ -465,11 +465,20 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
           ctx.stroke();
         }
 
-        if (cell.name && !cell.isPlayer) {
-          ctx.fillStyle = '#ffffff';
-          ctx.font = `${Math.max(12, cell.radius / 3)}px Arial`;
+        if (cell.name) {
+          // Draw name with black outline for better visibility on all skins
+          const fontSize = Math.max(12, cell.radius / 3);
+          ctx.font = `bold ${fontSize}px Arial`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
+          
+          // Draw black outline
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 4;
+          ctx.strokeText(cell.name, sx, sy);
+          
+          // Draw white text
+          ctx.fillStyle = '#ffffff';
           ctx.fillText(cell.name, sx, sy);
         }
       });
