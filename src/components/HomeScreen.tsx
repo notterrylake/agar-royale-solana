@@ -18,7 +18,8 @@ interface HomeScreenProps {
     walletAddress: string,
     transactionSignature: string,
     sessionCode?: string,
-    selectedSkin?: number
+    selectedSkin?: number,
+    isQuickPlay?: boolean
   ) => void;
 }
 
@@ -36,7 +37,7 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const TREASURY_WALLET = new PublicKey('9B5XszUGdMaxCZ7uSQhPzdks5ZQSmWxrmzCSvtJ6Ns6g');
   const BET_AMOUNT = 0.05;
 
-  const handlePaymentAndJoin = async (joinCode?: string) => {
+  const handlePaymentAndJoin = async (joinCode?: string, isQuickPlay: boolean = false) => {
     if (!playerName.trim()) {
       toast.error('Please enter your name');
       return;
@@ -57,7 +58,8 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
         mockWallet,
         mockSignature,
         joinCode ? sessionCode.toUpperCase() : undefined,
-        selectedSkin
+        selectedSkin,
+        isQuickPlay
       );
       return;
     }
@@ -115,7 +117,8 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
         walletPublicKey.toString(),
         signature,
         joinCode ? sessionCode.toUpperCase() : undefined,
-        selectedSkin
+        selectedSkin,
+        isQuickPlay
       );
     } catch (error: any) {
       console.error('Payment error:', error);
@@ -189,12 +192,21 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
               </label>
             </div>
             <Button
-              onClick={() => setMode('create')}
-              className="w-full h-14 text-base font-bold bg-white text-black hover:bg-white/90 transition-all shadow-lg uppercase tracking-wide"
+              onClick={() => handlePaymentAndJoin(undefined, true)}
+              className="w-full h-14 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-lg uppercase tracking-wide"
               disabled={!testMode && !walletPublicKey}
             >
               {!testMode && !walletPublicKey && <Wallet className="mr-2 h-5 w-5" />}
-              Create New Game
+              Quick Play (Find Match)
+            </Button>
+            <Button
+              onClick={() => setMode('create')}
+              variant="outline"
+              className="w-full h-14 text-base font-bold border-white/20 hover:bg-white/10 hover:border-white/40 transition-all uppercase tracking-wide"
+              disabled={!testMode && !walletPublicKey}
+            >
+              {!testMode && !walletPublicKey && <Wallet className="mr-2 h-5 w-5" />}
+              Create Private Game
             </Button>
             <Button
               onClick={() => setMode('join')}
