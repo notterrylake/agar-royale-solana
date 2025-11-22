@@ -29,6 +29,7 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const [selectedSkin, setSelectedSkin] = useState<number>(0);
   const [walletPublicKey, setWalletPublicKey] = useState<PublicKey | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [testMode, setTestMode] = useState(false);
   const navigate = useNavigate();
 
   // Treasury wallet - Replace with your actual treasury address
@@ -46,6 +47,22 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
       return;
     }
 
+    // TEST MODE: Skip payment
+    if (testMode) {
+      const mockSignature = `test_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      const mockWallet = walletPublicKey?.toString() || `test_wallet_${Math.random().toString(36).substring(2)}`;
+      
+      onStartGame(
+        playerName,
+        mockWallet,
+        mockSignature,
+        joinCode ? sessionCode.toUpperCase() : undefined,
+        selectedSkin
+      );
+      return;
+    }
+
+    // REAL MODE: Require wallet and payment
     if (!walletPublicKey) {
       toast.error('Please connect your Phantom wallet first');
       return;
@@ -146,33 +163,56 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
           <p className="text-sm text-muted-foreground font-medium uppercase tracking-[0.2em]">
             PvP Cell Battle Arena
           </p>
-          <div className="inline-block px-4 py-2 rounded-full bg-primary/20 border border-primary/50">
-            <span className="text-lg font-bold text-primary">0.05 SOL to Play</span>
-          </div>
+          {!testMode && (
+            <div className="inline-block px-4 py-2 rounded-full bg-primary/20 border border-primary/50">
+              <span className="text-lg font-bold text-primary">0.05 SOL to Play</span>
+            </div>
+          )}
+          {testMode && (
+            <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50">
+              <span className="text-lg font-bold text-green-500">TEST MODE - Free Play</span>
+            </div>
+          )}
         </div>
 
         {mode === 'menu' && (
           <Card className="p-10 space-y-5 bg-card/80 backdrop-blur-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/10 animate-scale-in">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={testMode}
+                  onChange={(e) => setTestMode(e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm text-muted-foreground">Enable Test Mode (No Payment)</span>
+              </label>
+            </div>
             <Button
               onClick={() => setMode('create')}
               className="w-full h-14 text-base font-bold bg-white text-black hover:bg-white/90 transition-all shadow-lg uppercase tracking-wide"
-              disabled={!walletPublicKey}
+              disabled={!testMode && !walletPublicKey}
             >
-              {!walletPublicKey && <Wallet className="mr-2 h-5 w-5" />}
+              {!testMode && !walletPublicKey && <Wallet className="mr-2 h-5 w-5" />}
               Create New Game
             </Button>
             <Button
               onClick={() => setMode('join')}
               variant="outline"
               className="w-full h-14 text-base font-bold border-white/20 hover:bg-white/10 hover:border-white/40 transition-all uppercase tracking-wide"
-              disabled={!walletPublicKey}
+              disabled={!testMode && !walletPublicKey}
             >
-              {!walletPublicKey && <Wallet className="mr-2 h-5 w-5" />}
+              {!testMode && !walletPublicKey && <Wallet className="mr-2 h-5 w-5" />}
               Join Existing Game
             </Button>
-            {!walletPublicKey && (
+            {!testMode && !walletPublicKey && (
               <p className="text-center text-sm text-muted-foreground">
                 Connect your Phantom wallet to play
+              </p>
+            )}
+            {testMode && (
+              <p className="text-center text-sm text-green-500">
+                Test mode enabled - No wallet or payment required
               </p>
             )}
             <div className="pt-6 space-y-2 text-center text-xs text-muted-foreground/80">
@@ -217,19 +257,29 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
               maxLength={20}
             />
 
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-              <p className="text-sm text-center text-muted-foreground">
-                You will pay <span className="font-bold text-primary">0.05 SOL</span> to enter the game
-              </p>
-            </div>
+            {!testMode && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                <p className="text-sm text-center text-muted-foreground">
+                  You will pay <span className="font-bold text-primary">0.05 SOL</span> to enter the game
+                </p>
+              </div>
+            )}
+
+            {testMode && (
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-sm text-center text-green-500 font-semibold">
+                  TEST MODE: No payment required
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <Button
                 onClick={() => handlePaymentAndJoin()}
                 className="w-full h-12 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-wide shadow-lg"
-                disabled={processing || !walletPublicKey}
+                disabled={processing || (!testMode && !walletPublicKey)}
               >
-                {processing ? 'Processing...' : 'Pay & Create Lobby'}
+                {processing ? 'Processing...' : testMode ? 'Create Test Lobby' : 'Pay & Create Lobby'}
               </Button>
               <Button
                 onClick={() => setMode('menu')}
@@ -282,19 +332,29 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
               maxLength={6}
             />
 
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-              <p className="text-sm text-center text-muted-foreground">
-                You will pay <span className="font-bold text-primary">0.05 SOL</span> to join the game
-              </p>
-            </div>
+            {!testMode && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                <p className="text-sm text-center text-muted-foreground">
+                  You will pay <span className="font-bold text-primary">0.05 SOL</span> to join the game
+                </p>
+              </div>
+            )}
+
+            {testMode && (
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-sm text-center text-green-500 font-semibold">
+                  TEST MODE: No payment required
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <Button
                 onClick={() => handlePaymentAndJoin('join')}
                 className="w-full h-12 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-wide shadow-lg"
-                disabled={processing || !walletPublicKey}
+                disabled={processing || (!testMode && !walletPublicKey)}
               >
-                {processing ? 'Processing...' : 'Pay & Join Lobby'}
+                {processing ? 'Processing...' : testMode ? 'Join Test Lobby' : 'Pay & Join Lobby'}
               </Button>
               <Button
                 onClick={() => setMode('menu')}

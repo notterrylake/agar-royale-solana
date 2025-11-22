@@ -49,26 +49,33 @@ const Index = () => {
     }
 
     try {
-      // Verify the payment first
-      toast.info('Verifying payment...');
-      const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
-        'verify-solana-payment',
-        {
-          body: {
-            signature: transactionSignature,
-            playerWallet: walletAddress,
-            expectedAmount: 0.05
+      // Skip payment verification in test mode (when signature starts with "test_")
+      const isTestMode = transactionSignature.startsWith('test_');
+      
+      if (!isTestMode) {
+        // Verify the payment
+        toast.info('Verifying payment...');
+        const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
+          'verify-solana-payment',
+          {
+            body: {
+              signature: transactionSignature,
+              playerWallet: walletAddress,
+              expectedAmount: 0.05
+            }
           }
+        );
+
+        if (verificationError || !verificationData?.verified) {
+          toast.error('Payment verification failed');
+          console.error('Verification error:', verificationError || verificationData);
+          return;
         }
-      );
 
-      if (verificationError || !verificationData?.verified) {
-        toast.error('Payment verification failed');
-        console.error('Verification error:', verificationError || verificationData);
-        return;
+        toast.success('Payment verified!');
+      } else {
+        toast.success('Test mode - Payment skipped');
       }
-
-      toast.success('Payment verified!');
 
       let currentSessionId: string;
       let currentSessionCode: string;
