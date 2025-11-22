@@ -14,21 +14,27 @@ interface HomeScreenProps {
 export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const [playerName, setPlayerName] = useState('');
   const [sessionCode, setSessionCode] = useState('');
-  const [mode, setMode] = useState<'menu' | 'create' | 'join' | 'selectSkin'>('menu');
+  const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [selectedSkin, setSelectedSkin] = useState<SkinType | null>(null);
-  const [pendingJoinCode, setPendingJoinCode] = useState<string | undefined>();
   const navigate = useNavigate();
 
   const handleCreate = () => {
+    if (!selectedSkin) {
+      toast.error('Please select a skin');
+      return;
+    }
     if (!playerName.trim()) {
       toast.error('Please enter your name');
       return;
     }
-    setPendingJoinCode(undefined);
-    setMode('selectSkin');
+    onStartGame(playerName, selectedSkin);
   };
 
   const handleJoin = () => {
+    if (!selectedSkin) {
+      toast.error('Please select a skin');
+      return;
+    }
     if (!playerName.trim()) {
       toast.error('Please enter your name');
       return;
@@ -37,14 +43,7 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
       toast.error('Please enter a session code');
       return;
     }
-    setPendingJoinCode(sessionCode);
-    setMode('selectSkin');
-  };
-
-  const handleSkinConfirm = () => {
-    if (selectedSkin) {
-      onStartGame(playerName, selectedSkin, pendingJoinCode);
-    }
+    onStartGame(playerName, selectedSkin, sessionCode);
   };
 
   return (
@@ -73,21 +72,53 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
         </div>
 
         {mode === 'menu' && (
-          <Card className="p-10 space-y-5 bg-card/80 backdrop-blur-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/10 animate-scale-in">
-            <Button
-              onClick={() => setMode('create')}
-              className="w-full h-14 text-base font-bold bg-white text-black hover:bg-white/90 transition-all shadow-lg uppercase tracking-wide"
-            >
-              Create New Game
-            </Button>
-            <Button
-              onClick={() => setMode('join')}
-              variant="outline"
-              className="w-full h-14 text-base font-bold border-white/20 hover:bg-white/10 hover:border-white/40 transition-all uppercase tracking-wide"
-            >
-              Join Existing Game
-            </Button>
-            <div className="pt-6 space-y-2 text-center text-xs text-muted-foreground/80">
+          <Card className="p-10 space-y-6 bg-card/80 backdrop-blur-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/10 animate-scale-in">
+            <div className="space-y-3">
+              <h2 className="text-2xl font-extrabold text-center text-foreground uppercase tracking-tight">Choose Your Skin</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: 'pepe' as SkinType, name: 'Pepe', image: require('@/assets/skins/pepe.png') },
+                  { id: 'doge' as SkinType, name: 'Doge', image: require('@/assets/skins/doge.png') },
+                  { id: 'shiba' as SkinType, name: 'Shiba', image: require('@/assets/skins/shiba.png') },
+                  { id: 'anime' as SkinType, name: 'Don\'t Tread', image: require('@/assets/skins/anime.webp') },
+                ].map((skin) => (
+                  <button
+                    key={skin.id}
+                    onClick={() => setSelectedSkin(skin.id)}
+                    className={`relative p-3 rounded-lg border-2 transition-all hover:scale-105 ${
+                      selectedSkin === skin.id
+                        ? 'border-white bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+                        : 'border-white/20 hover:border-white/40 bg-white/5'
+                    }`}
+                  >
+                    <img
+                      src={skin.image}
+                      alt={skin.name}
+                      className="w-full h-auto rounded-lg"
+                    />
+                    <p className="mt-2 text-xs font-bold text-white uppercase tracking-wide">{skin.name}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <Button
+                onClick={() => setMode('create')}
+                className="w-full h-12 text-base font-bold bg-white text-black hover:bg-white/90 transition-all shadow-lg uppercase tracking-wide"
+              >
+                Create New Game
+              </Button>
+              <Button
+                onClick={() => setMode('join')}
+                variant="outline"
+                className="w-full h-12 text-base font-bold border-white/20 hover:bg-white/10 hover:border-white/40 transition-all uppercase tracking-wide"
+              >
+                Join Existing Game
+              </Button>
+            </div>
+            
+            <div className="pt-4 space-y-2 text-center text-xs text-muted-foreground/80">
               <p className="font-medium">• Max 50 players per game</p>
               <p className="font-medium">• First to eat 100 food wins</p>
               <p className="font-medium">• Press W to eject mass</p>
@@ -159,14 +190,6 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
           </Card>
         )}
 
-        {mode === 'selectSkin' && (
-          <SkinSelector
-            selectedSkin={selectedSkin}
-            onSelectSkin={setSelectedSkin}
-            onConfirm={handleSkinConfirm}
-            onBack={() => setMode(pendingJoinCode ? 'join' : 'create')}
-          />
-        )}
       </div>
     </div>
   );
