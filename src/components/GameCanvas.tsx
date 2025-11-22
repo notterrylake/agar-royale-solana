@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Leaderboard } from './Leaderboard';
 import { WinnerScreen } from './WinnerScreen';
 import { PhantomWallet } from './PhantomWallet';
+import skinDoge from '@/assets/skin-doge.png';
+import skinShiba from '@/assets/skin-shiba.png';
+import skinAvatar from '@/assets/skin-avatar.webp';
+import skinPepe from '@/assets/skin-pepe.png';
 
 interface Cell {
   x: number;
@@ -34,7 +38,10 @@ interface GameCanvasProps {
   playerId: string;
   sessionCode: string;
   onPlayAgain: () => void;
+  selectedSkin: number;
 }
+
+const SKIN_IMAGES = [skinDoge, skinShiba, skinAvatar, skinPepe];
 
 const COLORS = [
   '#00ffff', '#ff00ff', '#ff00aa', '#00ff88', '#ffaa00', '#0088ff',
@@ -47,7 +54,7 @@ const CACTUS_COUNT = 30;
 const MAX_PLAYER_CELLS = 16;
 const WIN_CONDITION = 100;
 
-export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: GameCanvasProps) => {
+export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, selectedSkin }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
@@ -425,20 +432,40 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain }: Ga
         const sx = toScreenX(cell.x);
         const sy = toScreenY(cell.y);
         
-        const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, cell.radius);
-        gradient.addColorStop(0, cell.color);
-        gradient.addColorStop(1, cell.color + '33');
-        
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(sx, sy, cell.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.strokeStyle = cell.isPlayer ? '#00ffff' : '#ffffff44';
-        ctx.lineWidth = cell.isPlayer ? 3 : 2;
-        ctx.stroke();
+        if (cell.isPlayer) {
+          // Draw skin image for player
+          const skinImage = new Image();
+          skinImage.src = SKIN_IMAGES[selectedSkin - 1];
+          const size = cell.radius * 2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(sx, sy, cell.radius, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(skinImage, sx - cell.radius, sy - cell.radius, size, size);
+          ctx.restore();
+          
+          ctx.strokeStyle = '#00ffff';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(sx, sy, cell.radius, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          // Draw normal gradient for non-player cells
+          const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, cell.radius);
+          gradient.addColorStop(0, cell.color);
+          gradient.addColorStop(1, cell.color + '33');
+          
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(sx, sy, cell.radius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.strokeStyle = '#ffffff44';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
 
-        if (cell.name) {
+        if (cell.name && !cell.isPlayer) {
           ctx.fillStyle = '#ffffff';
           ctx.font = `${Math.max(12, cell.radius / 3)}px Arial`;
           ctx.textAlign = 'center';
