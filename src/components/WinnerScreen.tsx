@@ -10,9 +10,10 @@ interface WinnerScreenProps {
   finalScore: number;
   onPlayAgain: () => void;
   playerId: string;
+  potAmount?: number;
 }
 
-export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain, playerId }: WinnerScreenProps) => {
+export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain, playerId, potAmount = 0.15 }: WinnerScreenProps) => {
   const [countdown, setCountdown] = useState(5);
   const [canPlayAgain, setCanPlayAgain] = useState(false);
 
@@ -52,7 +53,12 @@ export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain, pl
               <h1 className="text-7xl font-extrabold text-white tracking-tighter uppercase" style={{ letterSpacing: '-0.05em' }}>
                 Victory
               </h1>
-              <p className="text-2xl text-white/70 font-light">You Won!</p>
+              <div className="inline-block px-6 py-3 rounded-full bg-primary/30 border-2 border-primary">
+                <span className="text-3xl font-extrabold text-primary">
+                  WON {potAmount} SOL!
+                </span>
+              </div>
+              <p className="text-xl text-white/70 font-light">You are the champion!</p>
             </>
           ) : (
             <>

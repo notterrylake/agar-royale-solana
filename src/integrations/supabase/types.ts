@@ -16,10 +16,15 @@ export type Database = {
     Tables: {
       game_sessions: {
         Row: {
+          bet_amount: number | null
           created_at: string | null
           ended_at: string | null
+          game_start_countdown: string | null
           id: string
+          lobby_start_time: string | null
           max_players: number | null
+          pot_amount: number | null
+          required_players: number | null
           session_code: string
           started_at: string | null
           status: string | null
@@ -27,10 +32,15 @@ export type Database = {
           winner_id: string | null
         }
         Insert: {
+          bet_amount?: number | null
           created_at?: string | null
           ended_at?: string | null
+          game_start_countdown?: string | null
           id?: string
+          lobby_start_time?: string | null
           max_players?: number | null
+          pot_amount?: number | null
+          required_players?: number | null
           session_code: string
           started_at?: string | null
           status?: string | null
@@ -38,10 +48,15 @@ export type Database = {
           winner_id?: string | null
         }
         Update: {
+          bet_amount?: number | null
           created_at?: string | null
           ended_at?: string | null
+          game_start_countdown?: string | null
           id?: string
+          lobby_start_time?: string | null
           max_players?: number | null
+          pot_amount?: number | null
+          required_players?: number | null
           session_code?: string
           started_at?: string | null
           status?: string | null
@@ -52,7 +67,9 @@ export type Database = {
       }
       players: {
         Row: {
+          bet_transaction_signature: string | null
           created_at: string | null
+          has_paid: boolean | null
           id: string
           is_alive: boolean | null
           last_game_ended_at: string | null
@@ -62,10 +79,13 @@ export type Database = {
           position_y: number | null
           score: number | null
           session_id: string | null
+          skin_id: number | null
           wallet_address: string | null
         }
         Insert: {
+          bet_transaction_signature?: string | null
           created_at?: string | null
+          has_paid?: boolean | null
           id?: string
           is_alive?: boolean | null
           last_game_ended_at?: string | null
@@ -75,10 +95,13 @@ export type Database = {
           position_y?: number | null
           score?: number | null
           session_id?: string | null
+          skin_id?: number | null
           wallet_address?: string | null
         }
         Update: {
+          bet_transaction_signature?: string | null
           created_at?: string | null
+          has_paid?: boolean | null
           id?: string
           is_alive?: boolean | null
           last_game_ended_at?: string | null
@@ -88,6 +111,7 @@ export type Database = {
           position_y?: number | null
           score?: number | null
           session_id?: string | null
+          skin_id?: number | null
           wallet_address?: string | null
         }
         Relationships: [
