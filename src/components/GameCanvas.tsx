@@ -69,9 +69,6 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
   const cameraPos = useRef({ x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 });
   const cellIdCounter = useRef(0);
   const foodEaten = useRef(0);
-  const deathHandled = useRef(false);
-  const gameInitialized = useRef(false);
-  const gameStartTime = useRef(0);
 
   useEffect(() => {
     const fetchPlayers = async () => {
@@ -81,16 +78,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
         .eq('session_id', sessionId)
         .order('score', { ascending: false });
       
-      if (data) {
-        setPlayers(data);
-        
-        // Auto-start game once players are loaded
-        if (!gameStarted && !gameEnded && !playerDied) {
-          setTimeout(() => {
-            initGame();
-          }, 500);
-        }
-      }
+      if (data) setPlayers(data);
     };
 
     fetchPlayers();
@@ -144,14 +132,6 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
   };
 
   const handlePlayerDeath = async () => {
-    if (deathHandled.current) {
-      console.log('Death already handled, skipping');
-      return;
-    }
-    
-    console.log('Handling player death');
-    deathHandled.current = true;
-    
     await supabase
       .from('players')
       .update({ is_alive: false })
@@ -159,12 +139,8 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
   };
 
   const initGame = () => {
-    console.log('Initializing game');
     cellIdCounter.current = 0;
     foodEaten.current = 0;
-    deathHandled.current = false;
-    gameInitialized.current = false;
-    gameStartTime.current = Date.now();
     
     const currentPlayer = players.find(p => p.id === playerId);
     
@@ -193,14 +169,6 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
     }));
 
     setScore(0);
-    setPlayerDied(false);
-    
-    // Mark as initialized after everything is set up
-    setTimeout(() => {
-      gameInitialized.current = true;
-      console.log('Game initialized');
-    }, 100);
-    
     setGameStarted(true);
     toast.success('Game started! W to eject. SPACE to split.');
   };
@@ -296,11 +264,6 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
     };
 
     const checkCollisions = () => {
-      // Don't process collisions if game isn't fully initialized
-      if (!gameInitialized.current || playerCells.current.length === 0) {
-        return;
-      }
-      
       playerCells.current = playerCells.current.filter(cell => {
         for (const cactus of cacti.current) {
           const dist = Math.hypot(cell.x - cactus.x, cell.y - cactus.y);
@@ -312,10 +275,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
         return true;
       });
 
-      // Add grace period - only check death after 500ms of gameplay
-      const timeSinceStart = Date.now() - gameStartTime.current;
-      if (playerCells.current.length === 0 && gameStarted && !gameEnded && !playerDied && !deathHandled.current && timeSinceStart > 500) {
-        console.log('Player died - no cells remaining');
+      if (playerCells.current.length === 0 && gameStarted && !gameEnded && !playerDied) {
         setPlayerDied(true);
         handlePlayerDeath();
         setGameStarted(false);
@@ -363,13 +323,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
     };
 
     const gameLoop = () => {
-      if (!gameStarted || !gameInitialized.current) return;
-      
-      // Safety check - ensure we have player cells
-      if (playerCells.current.length === 0) {
-        console.warn('No player cells in game loop');
-        return;
-      }
+      if (!gameStarted) return;
 
       playerCells.current.forEach(cell => {
         const dx = mousePos.current.x - canvas.width / 2;
