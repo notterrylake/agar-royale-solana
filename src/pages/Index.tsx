@@ -74,6 +74,18 @@ const Index = () => {
       let currentSessionCode: string;
 
       if (joinCode) {
+        // Join existing session - ANTI-CHEAT: Check for duplicate wallet
+        const { data: existingPlayer } = await supabase
+          .from('players')
+          .select('id')
+          .eq('wallet_address', walletAddress)
+          .eq('session_id', joinCode)
+          .maybeSingle();
+
+        if (existingPlayer) {
+          toast.error('This wallet is already in this game');
+          return;
+        }
         // Join existing session
         const { data: sessionData, error: sessionError } = await supabase
           .from('game_sessions')
@@ -124,7 +136,7 @@ const Index = () => {
         currentSessionId = sessionData.id;
       }
 
-      // Create player
+      // Create player - ANTI-CHEAT: Database will prevent duplicate wallets/signatures
       const { data: playerData, error: playerError } = await supabase
         .from('players')
         .insert({
@@ -142,7 +154,24 @@ const Index = () => {
         .select()
         .single();
 
-      if (playerError || !playerData) {
+      if (playerError) {
+        // Check for duplicate wallet or transaction
+        if (playerError.code === '23505') {
+          if (playerError.message.includes('unique_wallet_per_session')) {
+            toast.error('This wallet is already in this game');
+          } else if (playerError.message.includes('unique_transaction_signature')) {
+            toast.error('This transaction has already been used');
+          } else {
+            toast.error('Failed to join game - duplicate entry');
+          }
+        } else {
+          toast.error('Failed to join game');
+        }
+        console.error('Player creation error:', playerError);
+        return;
+      }
+
+      if (!playerData) {
         toast.error('Failed to join game');
         return;
       }

@@ -116,12 +116,45 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
     const isMe = winningPlayer.id === playerId;
     setWinner({ name: winningPlayer.player_name, isMe });
 
+    // Update game session status
+    const { data: sessionData } = await supabase
+      .from('game_sessions')
+      .select('pot_amount')
+      .eq('id', sessionId)
+      .single();
+
     await supabase
       .from('game_sessions')
       .update({ status: 'ended', winner_id: winningPlayer.id, ended_at: new Date().toISOString() })
       .eq('id', sessionId);
 
-    toast.success(isMe ? 'You won!' : `${winningPlayer.player_name} won!`);
+    // Process winner payout if this player won
+    if (isMe) {
+      try {
+        const { data: payoutData, error: payoutError } = await supabase.functions.invoke(
+          'process-winner-payout',
+          {
+            body: {
+              sessionId,
+              winnerId: playerId,
+              winnerWallet: winningPlayer.wallet_address,
+              potAmount: sessionData?.pot_amount || 0.15
+            }
+          }
+        );
+
+        if (payoutError || !payoutData?.success) {
+          console.error('Payout error:', payoutError || payoutData);
+          toast.error('Failed to process payout');
+        } else {
+          toast.success(`You won ${payoutData.amount} SOL!`);
+        }
+      } catch (error) {
+        console.error('Error processing payout:', error);
+      }
+    } else {
+      toast.success(`${winningPlayer.player_name} won!`);
+    }
   };
 
   const updatePlayerScore = async (newScore: number) => {

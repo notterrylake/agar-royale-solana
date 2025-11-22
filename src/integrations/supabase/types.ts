@@ -23,6 +23,8 @@ export type Database = {
           id: string
           lobby_start_time: string | null
           max_players: number | null
+          payout_processed_at: string | null
+          payout_signature: string | null
           pot_amount: number | null
           required_players: number | null
           session_code: string
@@ -39,6 +41,8 @@ export type Database = {
           id?: string
           lobby_start_time?: string | null
           max_players?: number | null
+          payout_processed_at?: string | null
+          payout_signature?: string | null
           pot_amount?: number | null
           required_players?: number | null
           session_code: string
@@ -55,6 +59,8 @@ export type Database = {
           id?: string
           lobby_start_time?: string | null
           max_players?: number | null
+          payout_processed_at?: string | null
+          payout_signature?: string | null
           pot_amount?: number | null
           required_players?: number | null
           session_code?: string
@@ -77,6 +83,8 @@ export type Database = {
           player_name: string
           position_x: number | null
           position_y: number | null
+          refund_processed_at: string | null
+          refund_signature: string | null
           score: number | null
           session_id: string | null
           skin_id: number | null
@@ -93,6 +101,8 @@ export type Database = {
           player_name: string
           position_x?: number | null
           position_y?: number | null
+          refund_processed_at?: string | null
+          refund_signature?: string | null
           score?: number | null
           session_id?: string | null
           skin_id?: number | null
@@ -109,6 +119,8 @@ export type Database = {
           player_name?: string
           position_x?: number | null
           position_y?: number | null
+          refund_processed_at?: string | null
+          refund_signature?: string | null
           score?: number | null
           session_id?: string | null
           skin_id?: number | null
