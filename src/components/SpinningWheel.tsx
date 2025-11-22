@@ -20,8 +20,8 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const SPIN_COST = 0.01; // SOL
-  const SLICES = 20;
-  const WINNING_SLICE = 10; // Position of the "Win" reward
+  const SLICES = 12;
+  const WINNING_SLICE = 6; // Position of the "Airdrop" reward
   const SLICE_ANGLE = 360 / SLICES;
 
   const playWinSound = () => {
@@ -76,7 +76,7 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
   const generateWinningHash = () => {
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
-    const hash = `WIN-${timestamp}-${randomStr}`.toUpperCase();
+    const hash = `AIRDROP-${timestamp}-${randomStr}`.toUpperCase();
     return hash;
   };
 
@@ -176,19 +176,19 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
       <Dialog open={showWinDialog} onOpenChange={setShowWinDialog}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-3xl font-extrabold uppercase tracking-tight">🎉 You Won!</DialogTitle>
+            <DialogTitle className="text-3xl font-extrabold uppercase tracking-tight">🎁 Airdrop Won!</DialogTitle>
             <DialogDescription className="text-muted-foreground/80">
-              Save this hash code and send it to our team to claim your prize.
+              Congratulations! Save this hash code to claim your airdrop reward.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5">
-            <div className="bg-white/5 p-5 rounded-lg border-2 border-white/20">
-              <p className="text-xs text-muted-foreground/70 mb-3 uppercase tracking-wider">Your Winning Hash Code:</p>
-              <p className="font-mono text-sm break-all font-bold text-white">{winningHash}</p>
+            <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 p-5 rounded-lg border-2 border-green-500/40">
+              <p className="text-xs text-muted-foreground/70 mb-3 uppercase tracking-wider">Your Airdrop Hash Code:</p>
+              <p className="font-mono text-sm break-all font-bold text-green-400">{winningHash}</p>
             </div>
             <Button
               onClick={copyToClipboard}
-              className="w-full h-12 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-wide"
+              className="w-full h-12 bg-green-500 text-white hover:bg-green-600 font-bold uppercase tracking-wide"
               variant="default"
             >
               {copied ? (
@@ -204,7 +204,7 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
               )}
             </Button>
             <p className="text-xs text-muted-foreground/70 text-center">
-              Keep this code safe to claim your prize.
+              Keep this code safe to claim your airdrop.
             </p>
           </div>
         </DialogContent>
@@ -223,7 +223,7 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
               transition: isSpinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
             }}
           >
-            {/* Create 20 slices */}
+            {/* Create slices */}
             {Array.from({ length: SLICES }).map((_, i) => (
               <div
                 key={i}
@@ -233,27 +233,32 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
                 }}
               >
                 <div
-                  className={`absolute w-0 h-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${
-                    i === WINNING_SLICE ? 'border-l-[128px] border-r-[128px] border-b-[128px] animate-pulse' : 'border-l-[128px] border-r-[128px] border-b-[128px]'
+                  className={`absolute w-0 h-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-l-[128px] border-r-[128px] border-b-[128px] ${
+                    i === WINNING_SLICE ? 'animate-pulse' : ''
                   }`}
                   style={{
                     borderLeftColor: 'transparent',
                     borderRightColor: 'transparent',
-                    borderBottomColor: i === WINNING_SLICE ? 'hsl(var(--primary))' : i % 2 === 0 ? 'hsl(var(--muted))' : 'hsl(var(--muted-foreground) / 0.3)',
+                    borderBottomColor: i === WINNING_SLICE 
+                      ? 'hsl(142, 76%, 36%)' // Green for Airdrop
+                      : i % 2 === 0 
+                        ? 'hsl(var(--muted))' 
+                        : 'hsl(var(--muted-foreground) / 0.3)',
                     transform: 'rotate(180deg)',
-                    boxShadow: i === WINNING_SLICE ? '0 0 20px hsl(var(--primary))' : 'none',
+                    boxShadow: i === WINNING_SLICE ? '0 0 30px rgba(34, 197, 94, 0.6)' : 'none',
                   }}
                 />
                 {i === WINNING_SLICE && (
                   <div
-                    className="absolute text-[10px] font-bold text-primary-foreground whitespace-nowrap"
+                    className="absolute text-[9px] font-extrabold text-white whitespace-nowrap"
                     style={{
-                      top: '60%',
+                      top: '58%',
                       left: '50%',
                       transform: 'translate(-50%, -50%) rotate(90deg)',
+                      textShadow: '0 2px 4px rgba(0,0,0,0.5)',
                     }}
                   >
-                    Win
+                    AIRDROP
                   </div>
                 )}
               </div>
