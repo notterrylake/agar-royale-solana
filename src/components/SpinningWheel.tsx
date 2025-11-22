@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Copy, Check, Zap } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SpinningWheelProps {
   walletPublicKey: PublicKey | null;
@@ -101,6 +102,8 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
 
     if (isSpinning) return;
 
+    let transactionSignature: string | null = null;
+
     try {
       setIsSpinning(true);
 
@@ -136,8 +139,8 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
 
         // Sign and send transaction
         const signed = await provider.signTransaction(transaction);
-        const signature = await connection.sendRawTransaction(signed.serialize());
-        await connection.confirmTransaction(signature);
+        transactionSignature = await connection.sendRawTransaction(signed.serialize());
+        await connection.confirmTransaction(transactionSignature);
 
         toast.success('Payment successful! Spinning...');
       } else {
@@ -156,10 +159,25 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
       setRotation(finalRotation);
 
       // Wait for spin to complete
-      setTimeout(() => {
+      setTimeout(async () => {
         setIsSpinning(false);
+        const hash = isWin ? generateWinningHash() : null;
+        
+        // Save spin result to database
+        try {
+          await supabase.from('spin_results').insert({
+            wallet_address: testMode ? 'test-mode' : walletPublicKey!.toString(),
+            hash_code: hash,
+            is_winner: isWin,
+            transaction_signature: transactionSignature,
+            spin_cost: SPIN_COST,
+            test_mode: testMode
+          });
+        } catch (error) {
+          console.error('Failed to save spin result:', error);
+        }
+        
         if (isWin) {
-          const hash = generateWinningHash();
           setWinningHash(hash);
           playWinSound();
           triggerConfetti();

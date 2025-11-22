@@ -172,6 +172,42 @@ export type Database = {
           },
         ]
       }
+      spin_results: {
+        Row: {
+          claimed_at: string | null
+          created_at: string
+          hash_code: string | null
+          id: string
+          is_winner: boolean
+          spin_cost: number
+          test_mode: boolean
+          transaction_signature: string | null
+          wallet_address: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          created_at?: string
+          hash_code?: string | null
+          id?: string
+          is_winner?: boolean
+          spin_cost: number
+          test_mode?: boolean
+          transaction_signature?: string | null
+          wallet_address: string
+        }
+        Update: {
+          claimed_at?: string | null
+          created_at?: string
+          hash_code?: string | null
+          id?: string
+          is_winner?: boolean
+          spin_cost?: number
+          test_mode?: boolean
+          transaction_signature?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
