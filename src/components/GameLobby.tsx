@@ -161,9 +161,34 @@ export const GameLobby = ({ sessionId, sessionCode, onGameStart, onLeaveLobby }:
   }, [countdown, sessionId]);
 
   const handleLeaveLobby = async () => {
-    // TODO: Implement refund logic here
-    toast.info('Refunding your bet...');
-    onLeaveLobby();
+    try {
+      // Get current player ID from localStorage
+      const playerId = localStorage.getItem('recent_player_id');
+      if (!playerId) {
+        toast.error('Player not found');
+        onLeaveLobby();
+        return;
+      }
+
+      toast.info('Processing refund...');
+
+      // Call refund edge function
+      const { data, error } = await supabase.functions.invoke('process-refund', {
+        body: { playerId, sessionId }
+      });
+
+      if (error || !data?.success) {
+        console.error('Refund error:', error || data);
+        toast.error('Failed to process refund');
+        return;
+      }
+
+      toast.success(`Refunded ${data.amount} SOL!`);
+      onLeaveLobby();
+    } catch (error) {
+      console.error('Error leaving lobby:', error);
+      toast.error('Failed to leave lobby');
+    }
   };
 
   return (
