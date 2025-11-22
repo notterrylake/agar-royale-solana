@@ -1,139 +1,164 @@
 import { useState } from 'react';
 import { GameCanvas } from '@/components/GameCanvas';
 import { HomeScreen } from '@/components/HomeScreen';
+import { GameLobby } from '@/components/GameLobby';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+type GameState = 'home' | 'lobby' | 'playing';
+
 const Index = () => {
-  const [gameState, setGameState] = useState<'home' | 'playing'>('home');
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [playerId, setPlayerId] = useState<string | null>(null);
-  const [sessionCode, setSessionCode] = useState<string | null>(null);
+  const [gameState, setGameState] = useState<GameState>('home');
+  const [sessionId, setSessionId] = useState<string>('');
+  const [playerId, setPlayerId] = useState<string>('');
+  const [sessionCode, setSessionCode] = useState<string>('');
+  const [selectedSkin, setSelectedSkin] = useState<number>(0);
 
   const generateSessionCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  const [selectedSkin, setSelectedSkin] = useState<number>(1);
-
-  const handleStartGame = async (playerName: string, joinCode?: string, skinId?: number) => {
-    if (skinId) setSelectedSkin(skinId);
+  const handleStartGame = async (
+    playerName: string, 
+    walletAddress: string,
+    transactionSignature: string,
+    joinCode?: string, 
+    skinId: number = 0
+  ) => {
+    setSelectedSkin(skinId);
     
+    // Check if player has recently played
+    const recentPlayerId = localStorage.getItem('recent_player_id');
+    if (recentPlayerId) {
+      const { data: playerData } = await supabase
+        .from('players')
+        .select('last_game_ended_at')
+        .eq('id', recentPlayerId)
+        .single();
+
+      if (playerData?.last_game_ended_at) {
+        const cooldownEnd = new Date(playerData.last_game_ended_at).getTime() + 5000;
+        const now = Date.now();
+        
+        if (now < cooldownEnd) {
+          const secondsLeft = Math.ceil((cooldownEnd - now) / 1000);
+          toast.error(`Please wait ${secondsLeft} seconds before starting a new game`);
+          return;
+        }
+      }
+    }
+
     try {
-      // Check if player has cooldown by checking localStorage for recent player ID
-      const recentPlayerId = localStorage.getItem('recent_player_id');
-      if (recentPlayerId) {
-        const { data: recentPlayer } = await supabase
-          .from('players')
-          .select('last_game_ended_at')
-          .eq('id', recentPlayerId)
-          .single();
-
-        if (recentPlayer?.last_game_ended_at) {
-          const endTime = new Date(recentPlayer.last_game_ended_at).getTime();
-          const now = new Date().getTime();
-          const timeSinceEnd = (now - endTime) / 1000; // in seconds
-
-          if (timeSinceEnd < 5) {
-            const remaining = Math.ceil(5 - timeSinceEnd);
-            toast.error(`Please wait ${remaining} more second${remaining !== 1 ? 's' : ''} before starting a new game`);
-            return;
+      // Verify the payment first
+      toast.info('Verifying payment...');
+      const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
+        'verify-solana-payment',
+        {
+          body: {
+            signature: transactionSignature,
+            playerWallet: walletAddress,
+            expectedAmount: 0.05
           }
         }
+      );
+
+      if (verificationError || !verificationData?.verified) {
+        toast.error('Payment verification failed');
+        console.error('Verification error:', verificationError || verificationData);
+        return;
       }
+
+      toast.success('Payment verified!');
+
+      let currentSessionId: string;
+      let currentSessionCode: string;
 
       if (joinCode) {
-        // Join existing game
-        const { data: session, error: sessionError } = await supabase
+        // Join existing session
+        const { data: sessionData, error: sessionError } = await supabase
           .from('game_sessions')
-          .select('*')
-          .eq('session_code', joinCode)
-          .eq('status', 'waiting')
+          .select('id, status, pot_amount')
+          .eq('session_code', joinCode.toUpperCase())
           .single();
 
-        if (sessionError || !session) {
-          toast.error('Game session not found or already started');
+        if (sessionError || !sessionData) {
+          toast.error('Game session not found');
           return;
         }
 
-        // Check player count
-        const { count } = await supabase
-          .from('players')
-          .select('*', { count: 'exact', head: true })
-          .eq('session_id', session.id);
-
-        if (count && count >= session.max_players) {
-          toast.error('Game is full');
+        if (sessionData.status !== 'waiting') {
+          toast.error('This game has already started');
           return;
         }
 
-        // Create player
-        const { data: player, error: playerError } = await supabase
-          .from('players')
-          .insert({
-            session_id: session.id,
-            player_name: playerName,
-            score: 0,
-            is_alive: true
-          })
-          .select()
-          .single();
+        // Update pot amount
+        await supabase
+          .from('game_sessions')
+          .update({ pot_amount: (sessionData.pot_amount || 0) + 0.05 })
+          .eq('id', sessionData.id);
 
-        if (playerError || !player) {
-          toast.error('Failed to join game');
-          return;
-        }
-
-        localStorage.setItem('recent_player_id', player.id);
-        setSessionId(session.id);
-        setPlayerId(player.id);
-        setSessionCode(session.session_code);
-        setGameState('playing');
-        toast.success(`Joined game ${joinCode}`);
+        currentSessionId = sessionData.id;
+        currentSessionCode = joinCode.toUpperCase();
       } else {
-        // Create new game
-        const code = generateSessionCode();
-        
-        const { data: session, error: sessionError } = await supabase
+        // Create new session
+        currentSessionCode = generateSessionCode();
+        const { data: sessionData, error: sessionError } = await supabase
           .from('game_sessions')
           .insert({
-            session_code: code,
-            max_players: 50,
+            session_code: currentSessionCode,
+            status: 'waiting',
+            max_players: 3,
             win_condition_food: 100,
-            status: 'waiting'
+            bet_amount: 0.05,
+            pot_amount: 0.05,
+            lobby_start_time: new Date().toISOString(),
           })
           .select()
           .single();
 
-        if (sessionError || !session) {
-          toast.error('Failed to create game');
+        if (sessionError || !sessionData) {
+          toast.error('Failed to create game session');
           return;
         }
 
-        // Create player
-        const { data: player, error: playerError } = await supabase
-          .from('players')
-          .insert({
-            session_id: session.id,
-            player_name: playerName,
-            score: 0,
-            is_alive: true
-          })
-          .select()
-          .single();
-
-        if (playerError || !player) {
-          toast.error('Failed to create player');
-          return;
-        }
-
-        localStorage.setItem('recent_player_id', player.id);
-        setSessionId(session.id);
-        setPlayerId(player.id);
-        setSessionCode(session.session_code);
-        setGameState('playing');
-        toast.success(`Game created! Share code: ${code}`);
+        currentSessionId = sessionData.id;
       }
+
+      // Create player
+      const { data: playerData, error: playerError } = await supabase
+        .from('players')
+        .insert({
+          session_id: currentSessionId,
+          player_name: playerName,
+          wallet_address: walletAddress,
+          bet_transaction_signature: transactionSignature,
+          has_paid: true,
+          skin_id: skinId,
+          position_x: Math.random() * 800,
+          position_y: Math.random() * 600,
+          score: 0,
+          is_alive: true,
+        })
+        .select()
+        .single();
+
+      if (playerError || !playerData) {
+        toast.error('Failed to join game');
+        return;
+      }
+
+      localStorage.setItem('recent_player_id', playerData.id);
+      setSessionId(currentSessionId);
+      setSessionCode(currentSessionCode);
+      setPlayerId(playerData.id);
+
+      if (!joinCode) {
+        toast.success(`Lobby created! Share code: ${currentSessionCode}`);
+      } else {
+        toast.success('Joined lobby successfully!');
+      }
+
+      setGameState('lobby');
     } catch (error) {
       console.error('Error starting game:', error);
       toast.error('Failed to start game');
@@ -142,20 +167,40 @@ const Index = () => {
 
   const handlePlayAgain = () => {
     setGameState('home');
-    setSessionId(null);
-    setPlayerId(null);
-    setSessionCode(null);
+    setSessionId('');
+    setSessionCode('');
+    setPlayerId('');
+  };
+
+  const handleLeaveLobby = () => {
+    setGameState('home');
+    setSessionId('');
+    setSessionCode('');
+    setPlayerId('');
+  };
+
+  const handleGameStart = () => {
+    setGameState('playing');
   };
 
   return (
-    <div className="relative">
-      {gameState === 'home' ? (
+    <div className="w-full h-screen">
+      {gameState === 'home' && (
         <HomeScreen onStartGame={handleStartGame} />
-      ) : (
+      )}
+      {gameState === 'lobby' && (
+        <GameLobby
+          sessionId={sessionId}
+          sessionCode={sessionCode}
+          onGameStart={handleGameStart}
+          onLeaveLobby={handleLeaveLobby}
+        />
+      )}
+      {gameState === 'playing' && (
         <GameCanvas
-          sessionId={sessionId!}
-          playerId={playerId!}
-          sessionCode={sessionCode!}
+          sessionId={sessionId}
+          playerId={playerId}
+          sessionCode={sessionCode}
           onPlayAgain={handlePlayAgain}
           selectedSkin={selectedSkin}
         />
