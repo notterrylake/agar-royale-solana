@@ -1,4 +1,4 @@
-import { Trophy, RefreshCw } from 'lucide-react';
+import { Trophy, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -38,13 +38,20 @@ export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain }: 
           </div>
         </div>
 
-        <Button
-          onClick={onPlayAgain}
-          className="w-full h-14 text-base font-bold bg-white text-black hover:bg-white/90 gap-3 uppercase tracking-wide shadow-lg"
-        >
-          <RefreshCw className="w-5 h-5" />
-          Play Again
-        </Button>
+        <div className="space-y-4">
+          <div className="flex items-center justify-center gap-2 text-muted-foreground/70 text-sm">
+            <Clock className="w-4 h-4" />
+            <p className="font-medium">Please wait 5 seconds before starting a new game</p>
+          </div>
+          
+          <Button
+            onClick={onPlayAgain}
+            className="w-full h-14 text-base font-bold bg-white text-black hover:bg-white/90 gap-3 uppercase tracking-wide shadow-lg"
+          >
+            <RefreshCw className="w-5 h-5" />
+            Play Again
+          </Button>
+        </div>
       </Card>
     </div>
   );
