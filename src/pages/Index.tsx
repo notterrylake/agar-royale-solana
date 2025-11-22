@@ -18,7 +18,30 @@ const Index = () => {
 
   const handleStartGame = async (playerName: string, joinCode?: string, skinId?: number) => {
     if (skinId) setSelectedSkin(skinId);
+    
     try {
+      // Check if player has cooldown by checking localStorage for recent player ID
+      const recentPlayerId = localStorage.getItem('recent_player_id');
+      if (recentPlayerId) {
+        const { data: recentPlayer } = await supabase
+          .from('players')
+          .select('last_game_ended_at')
+          .eq('id', recentPlayerId)
+          .single();
+
+        if (recentPlayer?.last_game_ended_at) {
+          const endTime = new Date(recentPlayer.last_game_ended_at).getTime();
+          const now = new Date().getTime();
+          const timeSinceEnd = (now - endTime) / 1000; // in seconds
+
+          if (timeSinceEnd < 5) {
+            const remaining = Math.ceil(5 - timeSinceEnd);
+            toast.error(`Please wait ${remaining} more second${remaining !== 1 ? 's' : ''} before starting a new game`);
+            return;
+          }
+        }
+      }
+
       if (joinCode) {
         // Join existing game
         const { data: session, error: sessionError } = await supabase
@@ -61,6 +84,7 @@ const Index = () => {
           return;
         }
 
+        localStorage.setItem('recent_player_id', player.id);
         setSessionId(session.id);
         setPlayerId(player.id);
         setSessionCode(session.session_code);
@@ -103,6 +127,7 @@ const Index = () => {
           return;
         }
 
+        localStorage.setItem('recent_player_id', player.id);
         setSessionId(session.id);
         setPlayerId(player.id);
         setSessionCode(session.session_code);
