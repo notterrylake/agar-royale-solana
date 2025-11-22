@@ -61,7 +61,8 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
   const [players, setPlayers] = useState<any[]>([]);
   const [gameEnded, setGameEnded] = useState(false);
   const [playerDied, setPlayerDied] = useState(false);
-  const [winner, setWinner] = useState<{ name: string; isMe: boolean } | null>(null);
+  const [winner, setWinner] = useState<{ name: string; isMe: boolean; winnerAmount?: number; teamFee?: number; payoutSignature?: string } | null>(null);
+  const [potAmount, setPotAmount] = useState(0.15);
   const mousePos = useRef({ x: 0, y: 0 });
   const playerCells = useRef<Cell[]>([]);
   const foods = useRef<Food[]>([]);
@@ -114,7 +115,6 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
   const handleGameWin = async (winningPlayer: any) => {
     setGameEnded(true);
     const isMe = winningPlayer.id === playerId;
-    setWinner({ name: winningPlayer.player_name, isMe });
 
     // Update game session status
     const { data: sessionData } = await supabase
@@ -122,6 +122,9 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
       .select('pot_amount')
       .eq('id', sessionId)
       .single();
+
+    const currentPot = sessionData?.pot_amount || 0.15;
+    setPotAmount(currentPot);
 
     await supabase
       .from('game_sessions')
@@ -131,6 +134,8 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
     // Process winner payout if this player won
     if (isMe) {
       try {
+        toast.info('Processing payout...');
+        
         const { data: payoutData, error: payoutError } = await supabase.functions.invoke(
           'process-winner-payout',
           {
@@ -138,7 +143,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
               sessionId,
               winnerId: playerId,
               winnerWallet: winningPlayer.wallet_address,
-              potAmount: sessionData?.pot_amount || 0.15
+              potAmount: currentPot
             }
           }
         );
@@ -146,14 +151,25 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
         if (payoutError || !payoutData?.success) {
           console.error('Payout error:', payoutError || payoutData);
           toast.error('Failed to process payout');
+          setWinner({ name: winningPlayer.player_name, isMe });
         } else {
-          toast.success(`You won ${payoutData.amount} SOL!`);
+          toast.success(`Payout sent! You won ${payoutData.winnerAmount} SOL!`);
+          setWinner({ 
+            name: winningPlayer.player_name, 
+            isMe,
+            winnerAmount: payoutData.winnerAmount,
+            teamFee: payoutData.teamFee,
+            payoutSignature: payoutData.signature
+          });
         }
       } catch (error) {
         console.error('Error processing payout:', error);
+        toast.error('Failed to process payout');
+        setWinner({ name: winningPlayer.player_name, isMe });
       }
     } else {
       toast.success(`${winningPlayer.player_name} won!`);
+      setWinner({ name: winningPlayer.player_name, isMe });
     }
   };
 
@@ -578,6 +594,10 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
           finalScore={score}
           onPlayAgain={onPlayAgain}
           playerId={playerId}
+          potAmount={potAmount}
+          winnerAmount={winner.winnerAmount}
+          teamFee={winner.teamFee}
+          payoutSignature={winner.payoutSignature}
         />
       )}
       

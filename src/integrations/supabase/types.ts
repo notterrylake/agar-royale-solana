@@ -30,7 +30,9 @@ export type Database = {
           session_code: string
           started_at: string | null
           status: string | null
+          team_fee_amount: number | null
           win_condition_food: number | null
+          winner_amount: number | null
           winner_id: string | null
         }
         Insert: {
@@ -48,7 +50,9 @@ export type Database = {
           session_code: string
           started_at?: string | null
           status?: string | null
+          team_fee_amount?: number | null
           win_condition_food?: number | null
+          winner_amount?: number | null
           winner_id?: string | null
         }
         Update: {
@@ -66,7 +70,9 @@ export type Database = {
           session_code?: string
           started_at?: string | null
           status?: string | null
+          team_fee_amount?: number | null
           win_condition_food?: number | null
+          winner_amount?: number | null
           winner_id?: string | null
         }
         Relationships: []

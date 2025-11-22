@@ -6,7 +6,7 @@ import { PhantomWallet } from '@/components/PhantomWallet';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Wallet } from 'lucide-react';
-import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Connection } from '@solana/web3.js';
+import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Connection, Keypair } from '@solana/web3.js';
 import skinDoge from '@/assets/skin-doge.png';
 import skinShiba from '@/assets/skin-shiba.png';
 import skinAvatar from '@/assets/skin-avatar.webp';
