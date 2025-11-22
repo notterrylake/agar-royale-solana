@@ -7,13 +7,14 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 
 interface HomeScreenProps {
-  onStartGame: (playerName: string, sessionCode?: string) => void;
+  onStartGame: (playerName: string, sessionCode?: string, selectedSkin?: number) => void;
 }
 
 export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   const [playerName, setPlayerName] = useState('');
   const [sessionCode, setSessionCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
+  const [selectedSkin, setSelectedSkin] = useState<number>(1);
   const navigate = useNavigate();
 
   const handleCreate = () => {
@@ -21,7 +22,7 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
       toast.error('Please enter your name');
       return;
     }
-    onStartGame(playerName);
+    onStartGame(playerName, undefined, selectedSkin);
   };
 
   const handleJoin = () => {
@@ -33,8 +34,15 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
       toast.error('Please enter a session code');
       return;
     }
-    onStartGame(playerName, sessionCode);
+    onStartGame(playerName, sessionCode, selectedSkin);
   };
+
+  const skins = [
+    { id: 1, name: 'Skin 1', color: 'from-blue-500 to-purple-500' },
+    { id: 2, name: 'Skin 2', color: 'from-green-500 to-emerald-500' },
+    { id: 3, name: 'Skin 3', color: 'from-red-500 to-orange-500' },
+    { id: 4, name: 'Skin 4', color: 'from-yellow-500 to-amber-500' },
+  ];
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -88,6 +96,25 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
         {mode === 'create' && (
           <Card className="p-10 space-y-6 bg-card/80 backdrop-blur-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/10 animate-scale-in">
             <h2 className="text-3xl font-extrabold text-center text-foreground uppercase tracking-tight">Create Game</h2>
+            
+            <div className="space-y-3">
+              <label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Choose Your Skin</label>
+              <div className="grid grid-cols-4 gap-3">
+                {skins.map((skin) => (
+                  <button
+                    key={skin.id}
+                    onClick={() => setSelectedSkin(skin.id)}
+                    className={`aspect-square rounded-xl bg-gradient-to-br ${skin.color} transition-all ${
+                      selectedSkin === skin.id
+                        ? 'ring-4 ring-white scale-110 shadow-2xl'
+                        : 'opacity-50 hover:opacity-75 hover:scale-105'
+                    }`}
+                    aria-label={skin.name}
+                  />
+                ))}
+              </div>
+            </div>
+
             <Input
               placeholder="Enter your name"
               value={playerName}
@@ -116,6 +143,25 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
         {mode === 'join' && (
           <Card className="p-10 space-y-6 bg-card/80 backdrop-blur-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/10 animate-scale-in">
             <h2 className="text-3xl font-extrabold text-center text-foreground uppercase tracking-tight">Join Game</h2>
+            
+            <div className="space-y-3">
+              <label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Choose Your Skin</label>
+              <div className="grid grid-cols-4 gap-3">
+                {skins.map((skin) => (
+                  <button
+                    key={skin.id}
+                    onClick={() => setSelectedSkin(skin.id)}
+                    className={`aspect-square rounded-xl bg-gradient-to-br ${skin.color} transition-all ${
+                      selectedSkin === skin.id
+                        ? 'ring-4 ring-white scale-110 shadow-2xl'
+                        : 'opacity-50 hover:opacity-75 hover:scale-105'
+                    }`}
+                    aria-label={skin.name}
+                  />
+                ))}
+              </div>
+            </div>
+
             <Input
               placeholder="Enter your name"
               value={playerName}
