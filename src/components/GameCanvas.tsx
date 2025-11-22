@@ -81,7 +81,16 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
         .eq('session_id', sessionId)
         .order('score', { ascending: false });
       
-      if (data) setPlayers(data);
+      if (data) {
+        setPlayers(data);
+        
+        // Auto-start game once players are loaded
+        if (!gameStarted && !gameEnded && !playerDied) {
+          setTimeout(() => {
+            initGame();
+          }, 500);
+        }
+      }
     };
 
     fetchPlayers();
