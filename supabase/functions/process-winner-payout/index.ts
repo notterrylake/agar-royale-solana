@@ -7,6 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Team wallet that receives 5% fee
+const TEAM_WALLET = new PublicKey('Chpw1W1rghTA6Dmc36AmZfoxnPB8VXR3dGFzgsrQWxhA');
+const TEAM_FEE_PERCENTAGE = 0.05; // 5% fee
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -67,41 +71,107 @@ serve(async (req) => {
       );
     }
 
-    // For demo purposes, we'll simulate the payout
-    // In production, you would need to:
-    // 1. Store treasury wallet private key in Supabase secrets
-    // 2. Create and sign the transfer transaction
-    // 3. Send it to the network
-    
-    console.log('Simulating payout transaction...');
-    
-    // Simulate transaction signature
-    const mockSignature = `payout_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    // Get treasury wallet from secrets
+    const treasuryPrivateKey = Deno.env.get('TREASURY_WALLET_PRIVATE_KEY');
+    if (!treasuryPrivateKey) {
+      console.error('Treasury wallet private key not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Treasury wallet not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse the private key
+    const secretKey = Uint8Array.from(JSON.parse(treasuryPrivateKey));
+    const treasuryKeypair = Keypair.fromSecretKey(secretKey);
+
+    console.log('Treasury wallet:', treasuryKeypair.publicKey.toString());
+
+    // Connect to Solana (use devnet for testing, mainnet for production)
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+
+    // Calculate amounts
+    const totalLamports = potAmount * LAMPORTS_PER_SOL;
+    const teamFeeLamports = Math.floor(totalLamports * TEAM_FEE_PERCENTAGE);
+    const winnerLamports = totalLamports - teamFeeLamports;
+
+    console.log('Payout breakdown:', {
+      total: potAmount,
+      teamFee: teamFeeLamports / LAMPORTS_PER_SOL,
+      winner: winnerLamports / LAMPORTS_PER_SOL
+    });
+
+    // Create transaction with both transfers
+    const transaction = new Transaction();
+
+    // Add transfer to winner (95%)
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: treasuryKeypair.publicKey,
+        toPubkey: new PublicKey(winnerWallet),
+        lamports: winnerLamports,
+      })
+    );
+
+    // Add transfer to team (5%)
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: treasuryKeypair.publicKey,
+        toPubkey: TEAM_WALLET,
+        lamports: teamFeeLamports,
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = treasuryKeypair.publicKey;
+
+    console.log('Sending payout transaction...');
+
+    // Sign and send transaction
+    const signature = await sendAndConfirmTransaction(
+      connection,
+      transaction,
+      [treasuryKeypair],
+      {
+        commitment: 'confirmed',
+        maxRetries: 3
+      }
+    );
+
+    console.log('Payout transaction confirmed:', signature);
 
     // Update session with payout info
     const { error: updateError } = await supabase
       .from('game_sessions')
       .update({
-        payout_signature: mockSignature,
-        payout_processed_at: new Date().toISOString()
+        payout_signature: signature,
+        payout_processed_at: new Date().toISOString(),
+        team_fee_amount: teamFeeLamports / LAMPORTS_PER_SOL,
+        winner_amount: winnerLamports / LAMPORTS_PER_SOL
       })
       .eq('id', sessionId);
 
     if (updateError) {
       console.error('Failed to update session:', updateError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to update session' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Transaction succeeded but DB update failed - log for manual reconciliation
+      console.error('CRITICAL: Transaction succeeded but DB update failed', {
+        signature,
+        sessionId,
+        winnerId
+      });
     }
 
     console.log('Payout processed successfully');
     return new Response(
       JSON.stringify({ 
         success: true,
-        signature: mockSignature,
-        amount: potAmount,
-        recipient: winnerWallet
+        signature,
+        winnerAmount: winnerLamports / LAMPORTS_PER_SOL,
+        teamFee: teamFeeLamports / LAMPORTS_PER_SOL,
+        recipient: winnerWallet,
+        explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

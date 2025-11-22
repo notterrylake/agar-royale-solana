@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { Connection, Keypair, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, sendAndConfirmTransaction } from "npm:@solana/web3.js@1.98.4";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 
 const corsHeaders = {
@@ -62,29 +63,83 @@ serve(async (req) => {
       );
     }
 
-    // For demo purposes, simulate the refund
-    // In production, you would:
-    // 1. Create a transfer transaction from treasury to player wallet
-    // 2. Sign and send it
-    const mockRefundSignature = `refund_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    // Check if refund already processed
+    if (player.refund_signature) {
+      console.log('Refund already processed');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          refundSignature: player.refund_signature,
+          alreadyProcessed: true 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    console.log('Simulating refund transaction...');
+    // Get treasury wallet from secrets
+    const treasuryPrivateKey = Deno.env.get('TREASURY_WALLET_PRIVATE_KEY');
+    if (!treasuryPrivateKey) {
+      console.error('Treasury wallet private key not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Treasury wallet not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse the private key
+    const secretKey = Uint8Array.from(JSON.parse(treasuryPrivateKey));
+    const treasuryKeypair = Keypair.fromSecretKey(secretKey);
+
+    console.log('Treasury wallet:', treasuryKeypair.publicKey.toString());
+
+    // Connect to Solana
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+
+    // Create refund transaction
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: treasuryKeypair.publicKey,
+        toPubkey: new PublicKey(player.wallet_address),
+        lamports: 0.05 * LAMPORTS_PER_SOL,
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = treasuryKeypair.publicKey;
+
+    console.log('Sending refund transaction...');
+
+    // Sign and send transaction
+    const signature = await sendAndConfirmTransaction(
+      connection,
+      transaction,
+      [treasuryKeypair],
+      {
+        commitment: 'confirmed',
+        maxRetries: 3
+      }
+    );
+
+    console.log('Refund transaction confirmed:', signature);
 
     // Update player record
     const { error: updatePlayerError } = await supabase
       .from('players')
       .update({
-        refund_signature: mockRefundSignature,
+        refund_signature: signature,
         refund_processed_at: new Date().toISOString()
       })
       .eq('id', playerId);
 
     if (updatePlayerError) {
       console.error('Failed to update player:', updatePlayerError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to process refund' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Transaction succeeded but DB update failed
+      console.error('CRITICAL: Refund succeeded but DB update failed', {
+        signature,
+        playerId
+      });
     }
 
     // Update pot amount in session
@@ -114,9 +169,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        refundSignature: mockRefundSignature,
+        refundSignature: signature,
         amount: 0.05,
-        recipient: player.wallet_address
+        recipient: player.wallet_address,
+        explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
