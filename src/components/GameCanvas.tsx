@@ -544,6 +544,7 @@ export const GameCanvas = ({ sessionId, playerId, sessionCode, onPlayAgain, sele
           isWinner={winner.isMe}
           finalScore={score}
           onPlayAgain={onPlayAgain}
+          playerId={playerId}
         />
       )}
       

@@ -1,15 +1,46 @@
 import { Trophy, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WinnerScreenProps {
   winnerName: string;
   isWinner: boolean;
   finalScore: number;
   onPlayAgain: () => void;
+  playerId: string;
 }
 
-export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain }: WinnerScreenProps) => {
+export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain, playerId }: WinnerScreenProps) => {
+  const [countdown, setCountdown] = useState(5);
+  const [canPlayAgain, setCanPlayAgain] = useState(false);
+
+  useEffect(() => {
+    // Update the last_game_ended_at timestamp when the winner screen shows
+    const updatePlayerEndTime = async () => {
+      await supabase
+        .from('players')
+        .update({ last_game_ended_at: new Date().toISOString() })
+        .eq('id', playerId);
+    };
+    updatePlayerEndTime();
+
+    // Start countdown
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setCanPlayAgain(true);
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [playerId]);
+
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/98 backdrop-blur-2xl">
       <Card className="p-14 max-w-xl w-full space-y-10 bg-card/90 backdrop-blur-xl shadow-[0_0_100px_rgba(255,255,255,0.1)] border-white/10 animate-scale-in">
@@ -39,17 +70,20 @@ export const WinnerScreen = ({ winnerName, isWinner, finalScore, onPlayAgain }: 
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-center gap-2 text-muted-foreground/70 text-sm">
-            <Clock className="w-4 h-4" />
-            <p className="font-medium">Please wait 5 seconds before starting a new game</p>
-          </div>
+          {!canPlayAgain && (
+            <div className="flex items-center justify-center gap-2 text-muted-foreground/70 text-sm">
+              <Clock className="w-4 h-4" />
+              <p className="font-medium">Please wait {countdown} second{countdown !== 1 ? 's' : ''} before starting a new game</p>
+            </div>
+          )}
           
           <Button
             onClick={onPlayAgain}
-            className="w-full h-14 text-base font-bold bg-white text-black hover:bg-white/90 gap-3 uppercase tracking-wide shadow-lg"
+            disabled={!canPlayAgain}
+            className="w-full h-14 text-base font-bold bg-white text-black hover:bg-white/90 gap-3 uppercase tracking-wide shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className="w-5 h-5" />
-            Play Again
+            {canPlayAgain ? 'Play Again' : `Wait ${countdown}s`}
           </Button>
         </div>
       </Card>

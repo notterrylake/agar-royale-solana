@@ -55,6 +55,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_alive: boolean | null
+          last_game_ended_at: string | null
           last_updated: string | null
           player_name: string
           position_x: number | null
@@ -67,6 +68,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_alive?: boolean | null
+          last_game_ended_at?: string | null
           last_updated?: string | null
           player_name: string
           position_x?: number | null
@@ -79,6 +81,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_alive?: boolean | null
+          last_game_ended_at?: string | null
           last_updated?: string | null
           player_name?: string
           position_x?: number | null
