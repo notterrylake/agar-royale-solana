@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { GameCanvas } from '@/components/GameCanvas';
 import { HomeScreen } from '@/components/HomeScreen';
 import { GameLobby } from '@/components/GameLobby';
+import { MatchmakingScreen } from '@/components/MatchmakingScreen';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-type GameState = 'home' | 'lobby' | 'playing';
+type GameState = 'home' | 'matchmaking' | 'lobby' | 'playing';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>('home');
@@ -13,6 +14,7 @@ const Index = () => {
   const [playerId, setPlayerId] = useState<string>('');
   const [sessionCode, setSessionCode] = useState<string>('');
   const [selectedSkin, setSelectedSkin] = useState<number>(0);
+  const [matchmakingQueueId, setMatchmakingQueueId] = useState<string>('');
 
   const generateSessionCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -206,6 +208,7 @@ const Index = () => {
     setSessionId('');
     setSessionCode('');
     setPlayerId('');
+    setMatchmakingQueueId('');
   };
 
   const handleLeaveLobby = () => {
@@ -213,16 +216,39 @@ const Index = () => {
     setSessionId('');
     setSessionCode('');
     setPlayerId('');
+    setMatchmakingQueueId('');
   };
 
   const handleGameStart = () => {
     setGameState('playing');
   };
 
+  const handleMatchFound = (foundSessionId: string, foundSessionCode: string, foundPlayerId: string) => {
+    setSessionId(foundSessionId);
+    setSessionCode(foundSessionCode);
+    setPlayerId(foundPlayerId);
+    localStorage.setItem('recent_player_id', foundPlayerId);
+    setGameState('lobby');
+    toast.success('Match found!');
+  };
+
+  const handleCancelMatchmaking = () => {
+    setGameState('home');
+    setMatchmakingQueueId('');
+  };
+
   return (
     <div className="w-full h-screen">
       {gameState === 'home' && (
         <HomeScreen onStartGame={handleStartGame} />
+      )}
+      {gameState === 'matchmaking' && (
+        <MatchmakingScreen
+          queueId={matchmakingQueueId}
+          playerName=""
+          onMatchFound={handleMatchFound}
+          onCancel={handleCancelMatchmaking}
+        />
       )}
       {gameState === 'lobby' && (
         <GameLobby

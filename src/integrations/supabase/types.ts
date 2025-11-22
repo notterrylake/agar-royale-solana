@@ -77,6 +77,36 @@ export type Database = {
         }
         Relationships: []
       }
+      matchmaking_queue: {
+        Row: {
+          bet_transaction_signature: string
+          created_at: string
+          id: string
+          player_name: string
+          skin_id: number
+          status: string
+          wallet_address: string
+        }
+        Insert: {
+          bet_transaction_signature: string
+          created_at?: string
+          id?: string
+          player_name: string
+          skin_id: number
+          status?: string
+          wallet_address: string
+        }
+        Update: {
+          bet_transaction_signature?: string
+          created_at?: string
+          id?: string
+          player_name?: string
+          skin_id?: number
+          status?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       players: {
         Row: {
           bet_transaction_signature: string | null
