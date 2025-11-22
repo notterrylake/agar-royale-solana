@@ -200,6 +200,26 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
               maxLength={20}
             />
 
+            <div className="space-y-3">
+              <label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Choose Your Skin</label>
+              <div className="grid grid-cols-4 gap-3">
+                {skins.map((skin) => (
+                  <button
+                    key={skin.id}
+                    onClick={() => setSelectedSkin(skin.id)}
+                    className={`aspect-square rounded-xl overflow-hidden bg-white/5 border-2 transition-all ${
+                      selectedSkin === skin.id
+                        ? 'border-white scale-110 shadow-2xl'
+                        : 'border-white/10 opacity-50 hover:opacity-75 hover:scale-105'
+                    }`}
+                    aria-label={skin.name}
+                  >
+                    <img src={skin.image} alt={skin.name} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Button
               onClick={() => handlePaymentAndJoin(undefined, true)}
               className="w-full h-14 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-lg uppercase tracking-wide"
