@@ -76,70 +76,93 @@ serve(async (req) => {
       );
     }
 
-    // Get treasury wallet from secrets
-    const treasuryPrivateKey = Deno.env.get('TREASURY_WALLET_PRIVATE_KEY');
-    if (!treasuryPrivateKey) {
-      console.error('Treasury wallet private key not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Treasury wallet not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Check if this is a test transaction (signature starts with "test_")
+    const isTestMode = player.bet_transaction_signature?.startsWith('test_');
+    
+    let refundSignature: string;
 
-    // Parse the private key
-    const secretKey = Uint8Array.from(JSON.parse(treasuryPrivateKey));
-    const treasuryKeypair = Keypair.fromSecretKey(secretKey);
-
-    console.log('Treasury wallet:', treasuryKeypair.publicKey.toString());
-
-    // Connect to Solana
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-
-    // Create refund transaction
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: treasuryKeypair.publicKey,
-        toPubkey: new PublicKey(player.wallet_address),
-        lamports: 0.05 * LAMPORTS_PER_SOL,
-      })
-    );
-
-    // Get recent blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = treasuryKeypair.publicKey;
-
-    console.log('Sending refund transaction...');
-
-    // Sign and send transaction
-    const signature = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      [treasuryKeypair],
-      {
-        commitment: 'confirmed',
-        maxRetries: 3
+    if (isTestMode) {
+      // TEST MODE: Skip real Solana transaction
+      console.log('Test mode detected - skipping real transaction');
+      refundSignature = `refund_test_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    } else {
+      // REAL MODE: Process actual Solana refund
+      // Get treasury wallet from secrets
+      const treasuryPrivateKey = Deno.env.get('TREASURY_WALLET_PRIVATE_KEY');
+      if (!treasuryPrivateKey) {
+        console.error('Treasury wallet private key not configured');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Treasury wallet not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-    );
 
-    console.log('Refund transaction confirmed:', signature);
+      // Parse the private key
+      let secretKey: Uint8Array;
+      try {
+        secretKey = Uint8Array.from(JSON.parse(treasuryPrivateKey));
+      } catch (error) {
+        console.error('Failed to parse treasury private key:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid treasury wallet configuration' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const treasuryKeypair = Keypair.fromSecretKey(secretKey);
+      console.log('Treasury wallet:', treasuryKeypair.publicKey.toString());
+
+      // Connect to Solana
+      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+
+      // Create refund transaction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: treasuryKeypair.publicKey,
+          toPubkey: new PublicKey(player.wallet_address),
+          lamports: 0.05 * LAMPORTS_PER_SOL,
+        })
+      );
+
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = treasuryKeypair.publicKey;
+
+      console.log('Sending refund transaction...');
+
+      // Sign and send transaction
+      refundSignature = await sendAndConfirmTransaction(
+        connection,
+        transaction,
+        [treasuryKeypair],
+        {
+          commitment: 'confirmed',
+          maxRetries: 3
+        }
+      );
+
+      console.log('Refund transaction confirmed:', refundSignature);
+    }
 
     // Update player record
     const { error: updatePlayerError } = await supabase
       .from('players')
       .update({
-        refund_signature: signature,
+        refund_signature: refundSignature,
         refund_processed_at: new Date().toISOString()
       })
       .eq('id', playerId);
 
     if (updatePlayerError) {
       console.error('Failed to update player:', updatePlayerError);
-      // Transaction succeeded but DB update failed
-      console.error('CRITICAL: Refund succeeded but DB update failed', {
-        signature,
-        playerId
-      });
+      if (!isTestMode) {
+        // Transaction succeeded but DB update failed (only critical in real mode)
+        console.error('CRITICAL: Refund succeeded but DB update failed', {
+          refundSignature,
+          playerId
+        });
+      }
     }
 
     // Update pot amount in session
@@ -169,10 +192,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        refundSignature: signature,
+        refundSignature: refundSignature,
         amount: 0.05,
         recipient: player.wallet_address,
-        explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
+        testMode: isTestMode,
+        explorerUrl: isTestMode ? null : `https://explorer.solana.com/tx/${refundSignature}?cluster=devnet`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
