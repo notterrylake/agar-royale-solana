@@ -14,7 +14,10 @@ const Index = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  const handleStartGame = async (playerName: string, joinCode?: string) => {
+  const [selectedSkin, setSelectedSkin] = useState<number>(1);
+
+  const handleStartGame = async (playerName: string, joinCode?: string, skinId?: number) => {
+    if (skinId) setSelectedSkin(skinId);
     try {
       if (joinCode) {
         // Join existing game
@@ -129,6 +132,7 @@ const Index = () => {
           playerId={playerId!}
           sessionCode={sessionCode!}
           onPlayAgain={handlePlayAgain}
+          selectedSkin={selectedSkin}
         />
       )}
     </div>

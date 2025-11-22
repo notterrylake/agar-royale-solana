@@ -5,6 +5,10 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
+import skinDoge from '@/assets/skin-doge.png';
+import skinShiba from '@/assets/skin-shiba.png';
+import skinAvatar from '@/assets/skin-avatar.webp';
+import skinPepe from '@/assets/skin-pepe.png';
 
 interface HomeScreenProps {
   onStartGame: (playerName: string, sessionCode?: string, selectedSkin?: number) => void;
@@ -38,10 +42,10 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
   };
 
   const skins = [
-    { id: 1, name: 'Skin 1', color: 'from-blue-500 to-purple-500' },
-    { id: 2, name: 'Skin 2', color: 'from-green-500 to-emerald-500' },
-    { id: 3, name: 'Skin 3', color: 'from-red-500 to-orange-500' },
-    { id: 4, name: 'Skin 4', color: 'from-yellow-500 to-amber-500' },
+    { id: 1, name: 'Doge', image: skinDoge },
+    { id: 2, name: 'Shiba Inu', image: skinShiba },
+    { id: 3, name: 'Avatar', image: skinAvatar },
+    { id: 4, name: 'Pepe', image: skinPepe },
   ];
 
   return (
@@ -104,13 +108,15 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
                   <button
                     key={skin.id}
                     onClick={() => setSelectedSkin(skin.id)}
-                    className={`aspect-square rounded-xl bg-gradient-to-br ${skin.color} transition-all ${
+                    className={`aspect-square rounded-xl overflow-hidden bg-white/5 border-2 transition-all ${
                       selectedSkin === skin.id
-                        ? 'ring-4 ring-white scale-110 shadow-2xl'
-                        : 'opacity-50 hover:opacity-75 hover:scale-105'
+                        ? 'border-white scale-110 shadow-2xl'
+                        : 'border-white/10 opacity-50 hover:opacity-75 hover:scale-105'
                     }`}
                     aria-label={skin.name}
-                  />
+                  >
+                    <img src={skin.image} alt={skin.name} className="w-full h-full object-cover" />
+                  </button>
                 ))}
               </div>
             </div>
@@ -151,13 +157,15 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
                   <button
                     key={skin.id}
                     onClick={() => setSelectedSkin(skin.id)}
-                    className={`aspect-square rounded-xl bg-gradient-to-br ${skin.color} transition-all ${
+                    className={`aspect-square rounded-xl overflow-hidden bg-white/5 border-2 transition-all ${
                       selectedSkin === skin.id
-                        ? 'ring-4 ring-white scale-110 shadow-2xl'
-                        : 'opacity-50 hover:opacity-75 hover:scale-105'
+                        ? 'border-white scale-110 shadow-2xl'
+                        : 'border-white/10 opacity-50 hover:opacity-75 hover:scale-105'
                     }`}
                     aria-label={skin.name}
-                  />
+                  >
+                    <img src={skin.image} alt={skin.name} className="w-full h-full object-cover" />
+                  </button>
                 ))}
               </div>
             </div>
