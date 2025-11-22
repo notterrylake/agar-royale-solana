@@ -191,6 +191,15 @@ export const HomeScreen = ({ onStartGame }: HomeScreenProps) => {
                 <span className="text-sm text-muted-foreground">Enable Test Mode (No Payment)</span>
               </label>
             </div>
+            
+            <Input
+              placeholder="Enter your name"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              className="h-12 text-base bg-white/5 border-white/10 focus:border-white/30 placeholder:text-muted-foreground/50"
+              maxLength={20}
+            />
+
             <Button
               onClick={() => handlePaymentAndJoin(undefined, true)}
               className="w-full h-14 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-lg uppercase tracking-wide"
