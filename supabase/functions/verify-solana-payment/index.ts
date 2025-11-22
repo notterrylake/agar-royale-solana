@@ -23,7 +23,7 @@ serve(async (req) => {
     );
 
     // Treasury wallet address (you'll need to set this up)
-    const TREASURY_WALLET = new PublicKey('9B5XszUGdMaxCZ7uSQhPzdks5ZQSmWxrmzCSvtJ6Ns6g'); // Replace with your actual treasury
+    const TREASURY_WALLET = new PublicKey('5HSvfmyninkzkRdpDwNm6BGiwm9QFMJ4wzFFtEpPmadp'); // Replace with your actual treasury
 
     // Fetch the transaction
     const transaction = await connection.getTransaction(signature, {
