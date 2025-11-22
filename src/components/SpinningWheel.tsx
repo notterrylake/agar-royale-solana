@@ -274,45 +274,64 @@ export const SpinningWheel = ({ walletPublicKey }: SpinningWheelProps) => {
             }}
           >
             {/* Create slices */}
-            {Array.from({ length: SLICES }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-full h-full origin-center"
-                style={{
-                  transform: `rotate(${i * SLICE_ANGLE}deg)`,
-                }}
-              >
+            {Array.from({ length: SLICES }).map((_, i) => {
+              // Define color palette for non-winning slices
+              const colors = [
+                'hsl(220, 70%, 50%)', // Blue
+                'hsl(280, 70%, 50%)', // Purple
+                'hsl(340, 70%, 50%)', // Pink
+                'hsl(20, 70%, 50%)',  // Orange
+                'hsl(50, 70%, 50%)',  // Yellow
+                'hsl(180, 70%, 40%)', // Cyan
+                'hsl(260, 70%, 55%)', // Violet
+                'hsl(10, 70%, 50%)',  // Red
+                'hsl(150, 70%, 45%)', // Teal
+                'hsl(30, 70%, 50%)',  // Orange-Red
+                'hsl(200, 70%, 50%)', // Sky Blue
+              ];
+              
+              // Get color index, skipping the winning slice position
+              const colorIndex = i < WINNING_SLICE ? i : i - 1;
+              const sliceColor = i === WINNING_SLICE 
+                ? 'hsl(142, 76%, 36%)' // Green for winning slice
+                : colors[colorIndex % colors.length];
+              
+              return (
                 <div
-                  className={`absolute w-0 h-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-l-[128px] border-r-[128px] border-b-[128px] ${
-                    i === WINNING_SLICE ? 'animate-pulse' : ''
-                  }`}
+                  key={i}
+                  className="absolute w-full h-full origin-center"
                   style={{
-                    borderLeftColor: 'transparent',
-                    borderRightColor: 'transparent',
-                    borderBottomColor: i === WINNING_SLICE 
-                      ? 'hsl(142, 76%, 36%)' // Green for Airdrop
-                      : i % 2 === 0 
-                        ? 'hsl(var(--muted))' 
-                        : 'hsl(var(--muted-foreground) / 0.3)',
-                    transform: 'rotate(180deg)',
-                    boxShadow: i === WINNING_SLICE ? '0 0 30px rgba(34, 197, 94, 0.6)' : 'none',
+                    transform: `rotate(${i * SLICE_ANGLE}deg)`,
                   }}
-                />
-                {i === WINNING_SLICE && (
+                >
                   <div
-                    className="absolute text-[9px] font-extrabold text-white whitespace-nowrap"
+                    className={`absolute w-0 h-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-l-[128px] border-r-[128px] border-b-[128px] ${
+                      i === WINNING_SLICE ? 'animate-pulse' : ''
+                    }`}
                     style={{
-                      top: '58%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%) rotate(90deg)',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                      borderLeftColor: 'transparent',
+                      borderRightColor: 'transparent',
+                      borderBottomColor: sliceColor,
+                      transform: 'rotate(180deg)',
+                      boxShadow: i === WINNING_SLICE ? '0 0 30px rgba(34, 197, 94, 0.6)' : 'none',
                     }}
-                  >
-                    AIRDROP
-                  </div>
-                )}
-              </div>
-            ))}
+                  />
+                  {i === WINNING_SLICE && (
+                    <div
+                      className="absolute text-[9px] font-extrabold text-white whitespace-nowrap"
+                      style={{
+                        top: '58%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%) rotate(90deg)',
+                        textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                      }}
+                    >
+                      AIRDROP
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             
             {/* Center circle */}
             <div className="absolute inset-1/2 w-16 h-16 -translate-x-1/2 -translate-y-1/2 bg-black rounded-full border-4 border-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)]">
